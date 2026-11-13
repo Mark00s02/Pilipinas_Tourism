@@ -66,6 +66,8 @@
 
     function route() {
       const r = PH_CORE.parseRoute(location.hash, PH.ids());
+      // Two quick hash changes can both read the newest hash; the second then only scrolls and must not bump the token.
+      if (r.view === 'dest' && current === r.id && page) { page.scrollToSection(r.section, true); return; }
       const my = ++token;
       if (r.view === 'map') {
         if (!PH.renderMap) { location.replace('#/' + list[0].id); return; } // map arrives in a later step
@@ -78,7 +80,6 @@
         hideLoader();
         return;
       }
-      if (current === r.id && page) { page.scrollToSection(r.section, true); return; }
       const desc = PH.get(r.id);
       if (map) { map.destroy(); map = null; }
       leaveDest();
