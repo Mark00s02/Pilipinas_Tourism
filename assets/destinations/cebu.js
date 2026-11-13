@@ -1,7 +1,8 @@
 PH.register({
   id: 'cebu', name: 'Cebu', region: 'Central Visayas', province: 'Cebu',
   hook: 'Magellan\'s Cross, waterfalls, whale sharks and lechon', bestMonths: 'Dec – May',
-  mapPin: [10.29, 123.90], mapLabel: 'left', seed: 23, sunDir: [-1, .09, .2],
+  // mapPin is only where the map draws the spot: nudged north of Cebu City so it clears Bohol's pin.
+  mapPin: [10.60, 123.93], mapLabel: 'left', seed: 23, sunDir: [-1, .09, .2],
   terrain: {
     vScale: 4, beachM: 8,
     colors: { greens: ['#2a4c24', '#335628', '#3d602c', '#476a32'], reef: '#3a9a8f' },

@@ -74,7 +74,7 @@
       if (PH.get(id)) { e.preventDefault(); enter(id); }
     });
 
-    function select(id) {
+    function select(id, reveal) {
       selected = id;
       const d = PH.get(id);
       el.querySelectorAll('.pin').forEach(p => p.classList.toggle('on', p.dataset.id === id));
@@ -94,20 +94,22 @@
           </div>
         </div>`;
       card.hidden = false;
+      // On a phone the card sits below the map: bring it into view on a tap, but never scroll on a mouse hover.
+      if (reveal && card.querySelector(".btn").getBoundingClientRect().bottom > innerHeight) card.scrollIntoView({ block: "end", behavior: REDUCE ? "auto" : "smooth" });
     }
 
     el.querySelectorAll('.pin').forEach(pin => {
       const id = pin.dataset.id;
       on(pin, 'pointerenter', e => { if (e.pointerType === 'mouse') select(id); });
-      on(pin, 'focus', () => { if (pin.matches(':focus-visible')) select(id); }); // keyboard only: a tap also focuses, and must stay a first tap
-      on(pin, 'click', () => { if (selected === id) enter(id); else select(id); });
+      on(pin, 'focus', () => { if (pin.matches(':focus-visible')) select(id, true); }); // keyboard only: a tap also focuses, and must stay a first tap
+      on(pin, 'click', () => { if (selected === id) enter(id); else select(id, true); });
     });
     // Tapping a destination's province works like tapping its pin.
     el.querySelectorAll('[data-province]').forEach(path => {
       const d = dests.find(x => x.province === path.dataset.province);
       if (!d) return;
       path.classList.add('is-dest');
-      on(path, 'click', () => { if (selected === d.id) enter(d.id); else select(d.id); });
+      on(path, 'click', () => { if (selected === d.id) enter(d.id); else select(d.id, true); });
       on(path, 'pointerenter', e => { if (e.pointerType === 'mouse') select(d.id); });
     });
 

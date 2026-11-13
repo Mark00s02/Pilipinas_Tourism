@@ -28,7 +28,7 @@
   }
   // Every map pin must be a comfortable tap target (>= 44x44 CSS px) and inside the viewport.
   function selftestMap() {
-    requestAnimationFrame(() => {
+    setTimeout(() => { // after the loader's 0.9 s fade, which still catches clicks while it runs
       const bad = [];
       document.querySelectorAll('.pin').forEach(b => {
         const r = b.getBoundingClientRect();
@@ -36,8 +36,20 @@
         if (r.left < 0 || r.right > innerWidth) bad.push(`${b.dataset.id} off-screen`);
       });
       if (document.documentElement.scrollWidth > innerWidth) bad.push(`horizontal scroll ${document.documentElement.scrollWidth}>${innerWidth}`);
-      selftestReport('map', bad);
-    });
+      // The visible dot of every pin must hit that pin, not a neighbour stacked on top of it.
+      document.querySelectorAll('.pin').forEach(b => {
+        const r = b.querySelector('i').getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        const owner = hit && hit.closest('.pin');
+        if (owner !== b) bad.push(`${b.dataset.id} dot hits ${owner ? owner.dataset.id : hit && hit.tagName}`);
+      });
+      // A first tap must show its preview card on screen, even on a phone where the card sits below the map.
+      [...document.querySelectorAll('.pin')].pop().click();
+      setTimeout(() => {
+        const c = document.querySelector('.map-card .btn').getBoundingClientRect();
+        if (c.bottom > innerHeight || c.top < 0) bad.push(`preview card's Explore button off-screen (${Math.round(c.top)}–${Math.round(c.bottom)} of ${innerHeight})`);
+        selftestReport('map', bad);
+      }, 1400); // the reveal is a smooth scroll
+    }, 1100);
   }
 
   function boot() {
@@ -112,8 +124,8 @@
     addEventListener('hashchange', route);
     route();
     PH.route = route;
-    const st = /[?&]selftest=(cycle|nogl)(&|$)/.exec(location.search);
-    if (st) (st[1] === 'cycle' ? selftestCycle : selftestNoGL)().catch(e => selftestReport(st[1], [String(e && e.stack || e)]));
+    const st = /[?&]selftest=(cycle|nogl|links|broken)(&|$)/.exec(location.search);
+    if (st) ({ cycle: selftestCycle, nogl: selftestNoGL, links: selftestLinks, broken: selftestBroken })[st[1]]().catch(e => selftestReport(st[1], [String(e && e.stack || e)]));
   }
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -153,6 +165,33 @@
     selftestReport('nogl', bad);
   }
   const $$ = s => [...document.querySelectorAll(s)];
+
+  // Links to where you already are must still move the page: "Back to the top", and a section link clicked twice.
+  async function selftestLinks() {
+    const bad = [];
+    await go('#/bohol'); await sleep(300);
+    scrollTo(0, document.documentElement.scrollHeight); await sleep(300);
+    $('#view-dest .fin-actions a.ghost').click(); await sleep(1500);
+    if (scrollY > 40) bad.push(`back-to-top left scrollY at ${Math.round(scrollY)}`);
+    const hillsLink = $$('#navlinks a').find(a => a.getAttribute('href') === '#/bohol/hills');
+    hillsLink.click(); await sleep(1500);
+    const top = $('#hills').offsetTop;
+    if (Math.abs(scrollY - top) > 40) bad.push(`first section click: scrollY ${Math.round(scrollY)} vs ${top}`);
+    scrollTo(0, 0); await sleep(300);
+    hillsLink.click(); await sleep(1500);
+    if (Math.abs(scrollY - top) > 40) bad.push(`repeat section click: scrollY ${Math.round(scrollY)} vs ${top}`);
+    selftestReport('links', bad);
+  }
+
+  // A destination whose 3D scene fails to build must still leave a usable text page, not a stuck loader.
+  async function selftestBroken() {
+    const bad = [];
+    PH.register(Object.assign({}, PH.get('bohol'), { id: 'zz-broken', name: 'Broken' })); // no baked terrain exists for this id
+    location.hash = '#/zz-broken'; await sleep(60);
+    try { await waitLoaded(8000); } catch (e) { bad.push('loader still covering the page'); }
+    if (!$('#view-dest .quiz')) bad.push('text page missing');
+    selftestReport('broken', bad);
+  }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

@@ -100,9 +100,9 @@
         const my = ++token;
         if (world) { dispose(world.scene); world = null; }
         if (onFirstFrame) { onFirstFrame(false); onFirstFrame = null; }
-        return new Promise(resolve => setTimeout(() => {
+        return new Promise((resolve, reject) => setTimeout(() => {
           if (my !== token) return resolve(false);
-          world = buildWorld(desc);
+          try { world = buildWorld(desc); } catch (e) { world = null; return reject(e); } // caller hides the loader; the text page stays usable
           world.sp = target; world.fresh = true;
           onFirstFrame = resolve;
         }, 30));

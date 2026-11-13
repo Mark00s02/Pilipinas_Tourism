@@ -171,6 +171,14 @@
       }
     });
 
+    // A link to the route you are already on fires no hashchange, so scroll here instead ("Back to the top", a section clicked twice).
+    on(document, 'click', e => {
+      const a = e.target.closest && e.target.closest(`a[href^="#/${id}"]`);
+      if (!a || a.getAttribute('href') !== location.hash) return;
+      e.preventDefault();
+      scrollToSection(a.getAttribute('href').split('/')[2] || null, true);
+    });
+
     const scrollToSection = (sid, smoothly) => {
       const t = sid ? $('#' + CSS.escape(sid), el) : null;
       scrollTo({ top: t ? t.offsetTop : 0, behavior: smoothly && !REDUCE ? 'smooth' : 'auto' });
