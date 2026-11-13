@@ -19,7 +19,7 @@
   };
   const DEFAULT_COLORS = {
     greens: ['#142e1b', '#1d4223', '#284f27', '#33592b'], sand: '#a8905e', rock: '#5a5048', summit: '#8d856c',
-    seabed: '#13231f', reef: '#2d7a70',
+    seabed: '#13231f', reef: '#2d7a70', cone: '#7d6a3e',
   };
 
   function create(canvas) {
@@ -161,7 +161,7 @@
           vec3 c = mix(uMid, uTop, smoothstep(-.02,.5,h)); c = mix(c, uBot, smoothstep(0.,-.25,h));
           float s = max(dot(d, normalize(uSunDir)), 0.);
           c += uSun * (pow(s, 10.)*.45*(1.-uNight*.6) + pow(s, 120.)*.5);
-          float disc = smoothstep(.9965, .9975, s);
+          float disc = smoothstep(.9984, .999, s);
           vec3 discCol = mix(uSun*1.3, uSun*.92, uNight);
           c = mix(c, discCol, disc);
           gl_FragColor = vec4(c, 1.); }`,
@@ -188,18 +188,19 @@
     const ip = indexed.attributes.position;
     for (let i = 0; i < ip.count; i++) ip.setY(i, worldY(data[i]));
     const terr = indexed.toNonIndexed(), idx = indexed.index.array;
-    const metres = new Float32Array(idx.length); // real metres per non-indexed vertex, for colouring
-    for (let i = 0; i < idx.length; i++) metres[i] = data[idx[i]];
+    const metres = new Float32Array(idx.length), marked = new Uint8Array(idx.length); // per non-indexed vertex, for colouring
+    for (let i = 0; i < idx.length; i++) { metres[i] = data[idx[i]]; if (grid.mark) marked[i] = grid.mark[idx[i]]; }
     indexed.dispose();
     terr.computeVertexNormals();
     const pos = terr.attributes.position, nrm = terr.attributes.normal;
     const COL = Object.assign({}, DEFAULT_COLORS, T.colors);
-    const G = COL.greens.map(C), SAND = C(COL.sand), ROCK = C(COL.rock), SUMMIT = C(COL.summit), SEABED = C(COL.seabed), REEF = C(COL.reef);
+    const G = COL.greens.map(C), SAND = C(COL.sand), ROCK = C(COL.rock), SUMMIT = C(COL.summit), SEABED = C(COL.seabed), REEF = C(COL.reef), CONE = C(COL.cone);
     const beachM = T.beachM ?? 6, rockM = T.rockM ?? 1800, summitM = T.summitM ?? Infinity, steep = T.steep ?? .62;
     const cols = new Float32Array(pos.count * 3), tmp = new THREE.Color();
     for (let i = 0; i < pos.count; i += 3) {
       const m = (metres[i] + metres[i + 1] + metres[i + 2]) / 3, x = pos.getX(i), z = pos.getZ(i), ny = nrm.getY(i);
       if (m <= 0) tmp.copy(m > -12 ? REEF : SEABED);
+      else if (marked[i] + marked[i + 1] + marked[i + 2] >= 2) tmp.copy(CONE).offsetHSL(0, 0, (hash(z, x) - .5) * .08);
       else if (m < beachM && ny > .8) tmp.copy(SAND);
       else if (m > summitM) tmp.copy(SUMMIT);
       else if (m > rockM || ny < steep) tmp.copy(ROCK).lerp(G[0], clamp((rockM - m) / rockM, 0, .5));
@@ -229,7 +230,8 @@
       x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
     })();
 
-    const ctx = { geo, sample, rnd, glow, unitsPerM: U, vScale: V, worldY, bbox: grid.bbox };
+    const heightAt = (lat, lon) => { const g = geoToGrid(grid, lat, lon); return heightM(g.gx, g.gy); };
+    const ctx = { geo, sample, heightAt, rnd, glow, unitsPerM: U, vScale: V, worldY, bbox: grid.bbox };
     const ticks = [];
     let follow = null;
     for (const spec of desc.landmarks || []) {
@@ -248,7 +250,7 @@
     return {
       scene, sky, skyU, stars, PAL, hemi, sunLight, waterMat, waterU, ticks, keys, geo,
       follow, followKey: followKey < 0 ? -1 : followKey + 1,
-      night: desc.night || [K - 3.8, K - 2],
+      night: desc.night || [K - 2.2, K - 1], // dusk lasts until the closing section unless a page asks otherwise
       camPos: keys[0][0].clone(), camLook: keys[0][1].clone(), sp: 0,
     };
   }

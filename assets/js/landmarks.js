@@ -188,6 +188,90 @@
     return eagle;
   };
 
+  // Same swell as the water shader in engine.js, so floating things ride the waves.
+  const waveY = (x, z, t) => Math.sin(x * .09 + t * .9) * .32 + Math.cos(z * .11 + t * .7) * .28 + Math.sin((x + z) * .23 + t * 1.6) * .1;
+  const deg = d => d * Math.PI / 180;
+  const box = (w, h, d, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); return m; };
+  const floaters = (group, items, lift = 0) => {
+    group.userData.tick = (t, dt, night, reduce) => {
+      if (reduce) return;
+      for (const o of items) { o.position.y = waveY(o.position.x, o.position.z, t) + lift; o.rotation.z = Math.sin(t * 1.3 + o.position.x) * .06; }
+    };
+  };
+  // Water spots near a point or in an area: { at:[lat,lon], spreadM } or { area }.
+  const waterSpots = (spec, ctx, count) => {
+    if (spec.area) return ctx.sample(spec.area, count, -400, -.5);
+    const d = (spec.spreadM || 300) / 111320;
+    return ctx.sample([spec.at[0] - d, spec.at[1] - d, spec.at[0] + d, spec.at[1] + d], count, -400, -.2);
+  };
+
+  // { area | at, count } outrigger boats (bangka), exaggerated in size so they read at island scale
+  L.bangka = (spec, ctx) => {
+    const group = new THREE.Group(), items = [];
+    const hullM = lambert(0xf2efe6), trimM = lambert(0x2f6fa8), woodM = lambert(0x6b5338), roofM = lambert(0xd9d2c0);
+    for (const s of waterSpots(spec, ctx, spec.count || 6)) {
+      const b = new THREE.Group();
+      const hull = new THREE.Mesh(new THREE.CylinderGeometry(.32, .14, 3.4, 6, 1).rotateX(Math.PI / 2), hullM); hull.scale.y = .55;
+      b.add(hull, box(.1, .08, 3.2, trimM, 0, .14, 0));
+      for (const x of [-1.5, 1.5]) b.add(new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 3, 4).rotateX(Math.PI / 2), woodM).translateX(x));
+      for (const z of [-.8, .8]) b.add(box(3.1, .05, .06, woodM, 0, .2, z));
+      b.add(box(.7, .04, 1.2, roofM, 0, .75, -.2), box(.04, .55, .04, woodM, .3, .48, .3), box(.04, .55, .04, woodM, -.3, .48, -.7));
+      const p = ctx.geo(s.lat, s.lon, 0); b.position.set(p.x, 0, p.z); b.rotation.y = ctx.rnd() * 6.28; b.scale.setScalar(spec.scale || 1);
+      group.add(b); items.push(b);
+    }
+    floaters(group, items, .05);
+    return group;
+  };
+
+  // { at, scale, heading } stone church with a square bell tower (Baclayon, Cagsawa)
+  L.belfry = (spec, ctx) => {
+    const g = new THREE.Group(), stone = lambert(spec.color || 0xcfc4ab), dark = lambert(0x3c3a36), roof = lambert(0x7a4a36);
+    g.add(box(1.6, 4.2, 1.6, stone, 0, 2.1, 0), box(1.3, 1, 1.3, stone, 0, 4.7, 0));
+    g.add(new THREE.Mesh(new THREE.ConeGeometry(1, .9, 4).rotateY(Math.PI / 4), roof).translateY(5.65));
+    g.add(box(.5, .7, 1.62, dark, 0, 4.7, 0), box(1.62, .7, .5, dark, 0, 4.7, 0));
+    if (!spec.ruin) {
+      g.add(box(2.4, 2.2, 5, stone, -2.1, 1.1, .8));
+      g.add(new THREE.Mesh(new THREE.CylinderGeometry(0, 1.75, .9, 4, 1).rotateY(Math.PI / 4).scale(1, 1, 2.1), roof).translateX(-2.1).translateY(2.65).translateZ(.8));
+    }
+    const p = ctx.geo(spec.at[0], spec.at[1]); g.position.copy(p).y -= .2;
+    g.rotation.y = deg(spec.heading || 0); g.scale.setScalar(spec.scale || 1.6);
+    return g;
+  };
+
+  // { at, heading (deg, 0 = north), length (world units) } pier on stilts with a viewing tower at the end (Cloud 9)
+  L.boardwalk = (spec, ctx) => {
+    const g = new THREE.Group(), wood = lambert(0x8a6a48), roof = lambert(0x5b4636), len = spec.length || 14;
+    g.add(box(.9, .12, len, wood, 0, 1.2, -len / 2));
+    for (let z = 0; z <= len; z += 1.4) for (const x of [-.4, .4]) g.add(box(.1, 1.8, .1, wood, x, .3, -z));
+    const tz = -len - 1.2;
+    for (const [x, z] of [[-1.2, -1.2], [1.2, -1.2], [-1.2, 1.2], [1.2, 1.2]]) g.add(box(.14, 4.2, .14, wood, x, 1.4, tz + z));
+    g.add(box(2.8, .14, 2.8, wood, 0, 1.25, tz), box(2.8, .14, 2.8, wood, 0, 2.6, tz));
+    g.add(new THREE.Mesh(new THREE.ConeGeometry(2.3, 1, 4).rotateY(Math.PI / 4), roof).translateZ(tz).translateY(3.9));
+    // Walk from `at` along the heading until the water starts, so the pier begins at the real shoreline.
+    const hd = deg(spec.heading ?? 90), step = 40 / 111320;
+    let [lat, lon] = spec.at;
+    for (let i = 0; i < 100 && ctx.heightAt(lat, lon) > 0; i++) { lat += Math.cos(hd) * step; lon += Math.sin(hd) * step / Math.cos(lat * Math.PI / 180); }
+    const p = ctx.geo(lat, lon, 0); g.position.set(p.x, -.3, p.z);
+    g.rotation.y = -hd; // local -z points along the compass heading (0 = north, 90 = east)
+    return g;
+  };
+
+  // { at, count, spreadM } surfers on boards riding the swell
+  L.surfer = (spec, ctx) => {
+    const group = new THREE.Group(), items = [];
+    const boardM = lambert(0xf4f1e8), skin = lambert(0x8a5a3c), shirt = lambert(0xd8573a);
+    for (const s of waterSpots(spec, ctx, spec.count || 4)) {
+      const sf = new THREE.Group();
+      sf.add(box(.36, .06, 1.9, boardM));
+      sf.add(box(.3, .5, .22, shirt, 0, .55, 0), box(.2, .2, .2, skin, 0, .92, 0), box(.1, .4, .1, skin, .12, .22, .1), box(.1, .4, .1, skin, -.12, .22, -.1));
+      const p = ctx.geo(s.lat, s.lon, 0); sf.position.set(p.x, 0, p.z); sf.rotation.y = ctx.rnd() * 6.28; sf.scale.setScalar(spec.scale || 1.6);
+      group.add(sf); items.push(sf);
+    }
+    floaters(group, items, .08);
+    return group;
+  };
+
+  PH.waveY = waveY;
   PH.loadGLB = loadGLB;
   PH.scatter = scatter;
   PH.lambert = lambert;

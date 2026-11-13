@@ -50,6 +50,12 @@ test('touch-ups: cones raise land only', () => {
   }
   assert.ok(raised);
 });
+test('touch-ups: cones mark the cells they raise, and nothing else', () => {
+  const g = halfGrid();
+  applyTouchups(g, [{ kind: 'cones', area: AREA, count: 30, height: 30, radius: 200 }]);
+  assert.ok(g.mark instanceof Uint8Array);
+  for (let i = 0; i < g.data.length; i++) assert.equal(g.mark[i] === 1, g.data[i] > 10, `cell ${i}`);
+});
 test('touch-ups: reef shelf lifts sea near land only', () => {
   const g = halfGrid();
   applyTouchups(g, [{ kind: 'reefShelf', depth: 2, width: 300 }]);

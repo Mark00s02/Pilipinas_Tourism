@@ -1,7 +1,7 @@
 PH.register({
   id: 'dabaw', name: 'Dabaw', region: 'Davao City · Mindanao', province: 'Davao del Sur',
   hook: 'Mt Apo, the Philippine eagle and the island of Samal', bestMonths: 'Mar – May · Aug',
-  mapPin: [7.07, 125.61], seed: 3, sunDir: [-1, .1, -.15],
+  mapPin: [7.07, 125.61], seed: 3, night: [2.2, 4], sunDir: [-1, .1, -.15],
   terrain: { vScale: 3, rockM: 2200, summitM: 2650 },
   landmarks: [
     { kind: 'palms', area: [6.90, 125.38, 7.15, 125.66], count: 120, maxM: 30 },

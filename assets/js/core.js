@@ -87,7 +87,13 @@
   }
 
   const TOUCHUPS = {
-    cones(grid, t, rnd) { stampPeaks(grid, t, rnd, d => 1 - d, (cur, base, add) => Math.max(cur, base + add)); },
+    cones(grid, t, rnd) {
+      const before = grid.data.slice();
+      stampPeaks(grid, t, rnd, d => 1 - d, (cur, base, add) => Math.max(cur, base + add));
+      // Mark raised cells so the engine can colour the cones apart from the land around them.
+      grid.mark = grid.mark || new Uint8Array(grid.data.length);
+      for (let i = 0; i < before.length; i++) if (grid.data[i] > before[i]) grid.mark[i] = 1;
+    },
     karst(grid, t, rnd) { stampPeaks(grid, t, rnd, d => 1 - d ** 4, (cur, base, add) => Math.max(cur, base + add)); },
     reefShelf(grid, t) {
       const D = distToLand(grid), lim = t.width / grid.cellM + 1e-6;
