@@ -1,0 +1,96 @@
+PH.register({
+  id: 'dabaw', name: 'Dabaw', region: 'Davao City · Mindanao', province: 'Davao del Sur',
+  hook: 'Mt Apo, the Philippine eagle and the island of Samal', bestMonths: 'Mar – May · Aug',
+  mapPin: [7.07, 125.61], seed: 3, sunDir: [-1, .1, -.15],
+  terrain: { vScale: 3, rockM: 2200, summitM: 2650 },
+  landmarks: [
+    { kind: 'palms', area: [6.90, 125.38, 7.15, 125.66], count: 120, maxM: 30 },
+    { kind: 'palms', area: [7.02, 125.64, 7.20, 125.80], count: 60, maxM: 40 },
+    { kind: 'cityLights', area: [7.00, 125.45, 7.20, 125.68], count: 2400, maxM: 120 },
+    { kind: 'cityLights', area: [7.03, 125.65, 7.17, 125.78], count: 260, maxM: 40 },
+    { kind: 'clouds', at: [6.987, 125.27], altM: 2500, radiusM: 7000, count: 12 },
+    { kind: 'eagle', at: [7.12, 125.38], altM: 2200, radiusM: 4000 },
+  ],
+  hero: {
+    eyebrow: 'Chapter 00 — Davao City', title: 'Where the mountain meets the gulf.',
+    sub: "From the steaming summit of Mount Apo to the coves of Samal, cross the Philippines' great southern city as the day burns down to city light.",
+    wordmark: 'DABAW', side: 'MADAYAW',
+    plate: { src: 'apo-ring.webp', alt: "Mount Apo's summit above the rainforest at dawn", w: 1600, h: 901, caption: 'Apo Sandawa — the grandfather' },
+    cam: { pos: [6.95, 125.62, 570], look: [6.987, 125.27, 1300] },
+  },
+  sections: [
+    {
+      id: 'apo', nav: 'Apo', navAlt: 'Mountain', indexLabel: 'The mountain',
+      eyebrow: 'The grandfather mountain', title: 'Apo, roof of the Philippines.',
+      body: 'At 2,954 metres, Mount Apo is the highest peak in the country — a dormant volcano whose sulfur vents still steam above the cloud forest. The Lumad peoples who live on its slopes call it Apo Sandawa: the elder, the grandfather.',
+      stats: [['2,954 m', 'Highest summit in the archipelago'], ['1936', 'Declared a national park'], ['Venado', 'A high lake on the trail to the summit']],
+      plates: [
+        { src: 'apo-ring.webp', alt: "Mount Apo's bare summit rising above clouds and forest", w: 1600, h: 901, caption: 'The summit ring at first light' },
+        { src: 'apo-venado.webp', alt: 'Lake Venado in a green highland basin below forested ridges', w: 1600, h: 1028, caption: 'Lake Venado, below the peak' },
+      ],
+      cam: { pos: [7.08, 125.40, 1700], look: [6.987, 125.27, 2300] },
+    },
+    {
+      id: 'haribon', nav: 'Haribon', navAlt: 'Eagle', indexLabel: 'The eagle', follow: 'eagle',
+      eyebrow: 'King of birds', title: 'The haribon keeps watch.',
+      body: 'The Philippine eagle is one of the largest eagles on Earth, and it lives nowhere but these islands. At the Philippine Eagle Center in Malagos, on Davao\'s forested edge, the national bird is bred, studied and returned to the wild.',
+      stats: [['~2 m', 'Wingspan, tip to tip'], ['1 egg', 'Laid only every two years'], ['1995', 'Named the national bird']],
+      plates: [
+        { src: 'eagle-center.webp', alt: 'A Philippine eagle perched on a branch at the Philippine Eagle Center', w: 1600, h: 1200, caption: 'Philippine Eagle Center, Malagos' },
+      ],
+      cam: { pos: [7.05, 125.30, 2500], look: [7.12, 125.38, 2100] },
+    },
+    {
+      id: 'gulf', nav: 'Gulf', navAlt: 'Samal', indexLabel: 'The gulf',
+      eyebrow: 'Island Garden City', title: 'Across the water, Samal.',
+      body: 'East of the city, Davao Gulf opens toward the Pacific. A short boat ride across lies Samal — ringed by white-sand coves, coral gardens and coconut groves, and close enough to watch the city lights come on.',
+      stats: [['Samal', 'The Island Garden City'], ['Minutes', 'By ferry from the city shore'], ['Reefs', 'Coves, coral gardens, dive walls']],
+      plates: [
+        { src: 'samal.webp', alt: 'Coconut palms silhouetted over the gulf at dusk on Samal Island', w: 1600, h: 1060, caption: 'Palms over the gulf, Samal' },
+        { src: 'gulf.webp', alt: 'Davao City lit up at night along the gulf shore', w: 1600, h: 1067, caption: "The city at the water's edge" },
+      ],
+      cam: { pos: [6.97, 125.67, 450], look: [7.10, 125.72, 60] },
+    },
+    {
+      id: 'kadayawan', nav: 'Kadayawan', navAlt: 'Festival', indexLabel: 'The festival',
+      eyebrow: 'A festival of thanks', title: 'Kadayawan, the city gives thanks.',
+      body: 'Every August the streets fill with dance, beadwork and the harvest. Kadayawan — from madayaw, "good, beautiful" — honours the tribes of Davao and the fruit the city is famous for: durian, the king of fruits.',
+      stats: [['August', 'Festival month, every year'], ['11', 'Tribes of Davao honoured'], ['Durian', 'The king of fruits']],
+      plates: [
+        { src: 'kadayawan.webp', alt: 'A young dancer in beaded tribal costume performing at the Kadayawan Festival', w: 1600, h: 1067, caption: 'Indak-indak sa Kadalanan' },
+        { src: 'durian.webp', alt: 'A basket piled with ripe durian fruit', w: 1600, h: 1200, caption: 'Ripe Davao durian' },
+      ],
+      cam: { pos: [6.98, 125.70, 1100], look: [7.07, 125.58, 100] },
+    },
+  ],
+  finale: {
+    id: 'madayaw', eyebrow: 'Chapter 05 — Afterglow', title: 'Madayaw.',
+    body: 'Come for the mountain. Stay for the gulf at night, when the whole shore turns to lantern light.',
+    stats: [['2,444 km²', 'One of the largest cities by land area in the country'], ['1.7M+', 'Dabawenyos call it home'], ['Mindanao', 'Gateway to the south']],
+    cam: { pos: [6.85, 125.72, 3100], look: [7.0, 125.35, 900] },
+  },
+  trip: {
+    getThere: 'Fly into Davao International Airport (DVO), with direct flights from Manila, Cebu and abroad. Samal is a short ferry ride from the city shore.',
+    season: 'March to May is the driest stretch. Come in August for Kadayawan.',
+    budget: 'Mid-range. City-priced hotels, cheap fruit and street food.',
+    mustEat: 'Durian, fresh from the stalls — or as candy and ice cream if you are easing in.',
+  },
+  quiz: {
+    q: 'Mount Apo is the highest peak in the Philippines. Roughly how tall is it?',
+    options: ['1,200 m', '2,954 m', '4,100 m'], answer: 1,
+    hint: 'Higher than any other summit in the archipelago, but well short of four kilometres.',
+    explain: 'Apo tops out at 2,954 metres.',
+  },
+  credits: [
+    { plate: 'Plate 01', title: 'The Ring of Mt. Apo', url: 'https://commons.wikimedia.org/wiki/File:The_Ring_of_Mt._Apo.jpg', author: 'Bro. Jeffrey Pioquinto, SJ', license: 'CC BY 2.0', licenseUrl: 'https://creativecommons.org/licenses/by/2.0' },
+    { plate: 'Plate 02', title: 'Lake Venado', url: 'https://commons.wikimedia.org/wiki/File:Lake_Venado.jpg', author: 'JBYBIOSA', license: 'CC BY-SA 4.0', licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0' },
+    { plate: 'Plate 03', title: 'Pithecophaga jefferyi, Philippine Eagle Center', url: 'https://commons.wikimedia.org/wiki/File:Pithecophaga_jefferyi_-Philippine_Eagle_Center,_Davao_City,_Philippines-8a.jpg', author: 'Constantine Agustin', license: 'CC BY-SA 2.0', licenseUrl: 'https://creativecommons.org/licenses/by-sa/2.0' },
+    { plate: 'Plate 04', title: 'Samal Island', url: 'https://commons.wikimedia.org/wiki/File:Samal_Island.JPG', author: 'Lachlan Fearnley', license: 'CC BY-SA 3.0', licenseUrl: 'https://creativecommons.org/licenses/by-sa/3.0' },
+    { plate: 'Plate 05', title: 'Davao Gulf', url: 'https://commons.wikimedia.org/wiki/File:Davao_Gulf_(14634526362).jpg', author: 'Bro. Jeffrey Pioquinto, SJ', license: 'CC BY 2.0', licenseUrl: 'https://creativecommons.org/licenses/by/2.0' },
+    { plate: 'Plate 06', title: 'Indak Boy, Kadayawan Festival', url: 'https://commons.wikimedia.org/wiki/File:Indak_Boy_Kadayawan_Festival_1.jpg', author: 'Fpj455', license: 'CC BY-SA 4.0', licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0' },
+    { plate: 'Plate 07', title: 'Ripe Davao Durian in a basket', url: 'https://commons.wikimedia.org/wiki/File:Ripe_Davao_Durian_in_a_basket.jpg', author: 'MadayawDavao', license: 'CC BY-SA 4.0', licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0' },
+  ],
+  creditsExtra: [
+    '3D eagle — <a href="https://poly.pizza/m/1Z5L1v0bfu7">Eagle</a>, Robert Mirabelle, via Poly Pizza · <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>. Recoloured and animated.',
+  ],
+});
