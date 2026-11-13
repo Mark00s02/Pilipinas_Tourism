@@ -1,7 +1,7 @@
 // Drive headless Edge/Chrome over the DevTools protocol: wait for the page to settle, print console errors,
 // optionally evaluate an expression and save a screenshot.
 // node tools/shoot.mjs <url-or-path[?q][#hash]> [--out shot.png] [--size 1440x900] [--wait 30000]
-//      [--until "<js expr>"] [--print "<js expr>"] [--settle 1500]
+//      [--until "<js expr>"] [--print "<js expr>"] [--settle 1500] [--gpu]
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -27,7 +27,9 @@ const exe = [String.raw`C:\Program Files (x86)\Microsoft\Edge\Application\msedge
 if (!exe) { console.error('no Edge/Chrome found'); process.exit(2); }
 const profile = mkdtempSync(join(tmpdir(), 'ph-shoot-'));
 const port = 9300 + Math.floor(Math.random() * 500);
-const browser = spawn(exe, ['--headless=new', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--hide-scrollbars', '--no-first-run',
+// --gpu: render on the real GPU instead of SwiftShader (closer to what visitors get).
+const gl = args.includes('--gpu') ? [] : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
+const browser = spawn(exe, ['--headless=new', ...gl, '--hide-scrollbars', '--no-first-run',
   '--allow-file-access-from-files', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, `--window-size=${W},${H}`, 'about:blank'], { stdio: 'ignore' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let code = 0;

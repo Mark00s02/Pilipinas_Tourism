@@ -19,7 +19,7 @@
   };
   const DEFAULT_COLORS = {
     greens: ['#142e1b', '#1d4223', '#284f27', '#33592b'], sand: '#a8905e', rock: '#5a5048', summit: '#8d856c',
-    seabed: '#13231f', reef: '#2d7a70', cone: '#7d6a3e',
+    seabed: '#13231f', reef: '#2d7a70', cone: '#7d6a3e', terrace: '#7c9a3a',
   };
 
   function create(canvas) {
@@ -194,13 +194,14 @@
     terr.computeVertexNormals();
     const pos = terr.attributes.position, nrm = terr.attributes.normal;
     const COL = Object.assign({}, DEFAULT_COLORS, T.colors);
-    const G = COL.greens.map(C), SAND = C(COL.sand), ROCK = C(COL.rock), SUMMIT = C(COL.summit), SEABED = C(COL.seabed), REEF = C(COL.reef), CONE = C(COL.cone);
+    const G = COL.greens.map(C), SAND = C(COL.sand), ROCK = C(COL.rock), SUMMIT = C(COL.summit), SEABED = C(COL.seabed), REEF = C(COL.reef), CONE = C(COL.cone), TERRACE = C(COL.terrace);
     const beachM = T.beachM ?? 6, rockM = T.rockM ?? 1800, summitM = T.summitM ?? Infinity, steep = T.steep ?? .62;
     const cols = new Float32Array(pos.count * 3), tmp = new THREE.Color();
     for (let i = 0; i < pos.count; i += 3) {
       const m = (metres[i] + metres[i + 1] + metres[i + 2]) / 3, x = pos.getX(i), z = pos.getZ(i), ny = nrm.getY(i);
       if (m <= 0) tmp.copy(m > -12 ? REEF : SEABED);
-      else if (marked[i] + marked[i + 1] + marked[i + 2] >= 2) tmp.copy(CONE).offsetHSL(0, 0, (hash(z, x) - .5) * .08);
+      else if (marked[i] === 1 && marked[i + 1] === 1 || marked[i] === 1 && marked[i + 2] === 1 || marked[i + 1] === 1 && marked[i + 2] === 1) tmp.copy(CONE).offsetHSL(0, 0, (hash(z, x) - .5) * .08);
+      else if (marked[i] === 2 && ny > .55) tmp.copy(TERRACE).offsetHSL(0, 0, (hash(z, x) - .5) * .1); // flat terrace treads; risers stay as land
       else if (m < beachM && ny > .8) tmp.copy(SAND);
       else if (m > summitM) tmp.copy(SUMMIT);
       else if (m > rockM || ny < steep) tmp.copy(ROCK).lerp(G[0], clamp((rockM - m) / rockM, 0, .5));
@@ -220,7 +221,7 @@
       sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
         transformed.y += sin(position.x*.09 + uTime*.9)*.32 + cos(position.z*.11 + uTime*.7)*.28 + sin((position.x+position.z)*.23 + uTime*1.6)*.1;`);
     };
-    scene.add(new THREE.Mesh(waterGeo, waterMat));
+    if (T.water !== false) scene.add(new THREE.Mesh(waterGeo, waterMat)); // inland places (Banaue) have no sea
 
     // Glow sprite shared by light-type landmarks
     const glow = (() => {
@@ -244,7 +245,9 @@
     }
 
     const cams = [desc.hero.cam, ...desc.sections.map(s => s.cam), desc.finale.cam];
-    const keys = cams.map(c => [geo(...c.pos), geo(...c.look)]);
+    // Keep every camera clear of the ground: real terrain is easy to misjudge from coordinates alone.
+    const clear = v => { const g = geoToGrid(grid, ...[(.5 - v.z / WORLD) * (N - S) + S, (v.x / WORLD + .5) * (E - Wb) + Wb]); v.y = Math.max(v.y, worldY(heightM(g.gx, g.gy)) + 2.5); return v; };
+    const keys = cams.map(c => [clear(geo(...c.pos)), geo(...c.look)]);
     const followKey = desc.sections.findIndex(s => s.follow === 'eagle');
     const K = keys.length;
     return {

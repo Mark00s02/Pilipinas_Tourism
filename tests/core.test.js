@@ -70,6 +70,11 @@ test('touch-ups: terraces quantise land heights', () => {
   applyTouchups(g, [{ kind: 'terraces', area: AREA, step: 5 }]);
   for (let y = 0; y < 20; y++) for (let x = 0; x < 10; x++) assert.equal(g.data[y * 20 + x] % 5, 0);
 });
+test('touch-ups: terraces mark land cells in their area with 2', () => {
+  const g = halfGrid(x => x * 7 + 3);
+  applyTouchups(g, [{ kind: 'terraces', area: AREA, step: 5 }]);
+  for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) assert.equal(g.mark[y * 20 + x], x < 10 ? 2 : 0);
+});
 test('touch-ups: karst and lagoon behave, same seed is deterministic', () => {
   const tus = [{ kind: 'karst', area: AREA, count: 10, height: 50, radius: 150 }, { kind: 'lagoon', at: [0.009, 0.004], radius: 250, depth: 4 }];
   const a = applyTouchups(halfGrid(), tus, 7), b = applyTouchups(halfGrid(), tus, 7);

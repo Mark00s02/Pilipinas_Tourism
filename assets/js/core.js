@@ -108,9 +108,10 @@
     },
     terraces(grid, t) {
       const b = areaCells(grid, t.area), { w, data } = grid;
+      grid.mark = grid.mark || new Uint8Array(data.length);
       for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) {
         const k = y * w + x;
-        if (data[k] > 0) data[k] = Math.max(t.step, Math.floor(data[k] / t.step) * t.step);
+        if (data[k] > 0) { data[k] = Math.max(t.step, Math.floor(data[k] / t.step) * t.step); grid.mark[k] = 2; }
       }
     },
   };

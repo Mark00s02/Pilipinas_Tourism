@@ -271,6 +271,128 @@
     return group;
   };
 
+  // { area | at, count } paraw: a bangka with tall sails (Boracay)
+  L.paraw = (spec, ctx) => {
+    const group = L.bangka(spec, ctx), cols = [0xf2efe6, 0x2f6fa8, 0xe2a23a, 0xc9473a, 0x3f8f6a];
+    group.children.forEach((b, i) => {
+      const mast = box(.07, 4.2, .07, lambert(0x6b5338), 0, 2.2, .2), sailM = lambert(cols[i % cols.length], { side: THREE.DoubleSide });
+      const sail = new THREE.Mesh(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, .5, .25, 0, 4.2, .2, 0, .6, -1.9, 0, 4.2, .2, 0, 3.6, -1.5, 0, .6, -1.9], 3)), sailM);
+      sail.geometry.computeVertexNormals(); sail.rotation.y = .5;
+      const jib = new THREE.Mesh(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, .6, .3, 0, 3.8, .22, 0, .6, 1.6], 3)), lambert(0xf2efe6, { side: THREE.DoubleSide }));
+      jib.geometry.computeVertexNormals();
+      b.add(mast, sail, jib);
+    });
+    return group;
+  };
+
+  // { area, count, minM, maxM } Ifugao houses: a box on four posts under a steep thatched pyramid
+  L.huts = (spec, ctx) => {
+    const wood = lambert(0x4e3826), thatch = lambert(0x8a6f45), spots = ctx.sample(spec.area, spec.count || 20, spec.minM ?? 0, spec.maxM ?? 9000);
+    const parts = [
+      [new THREE.BoxGeometry(.9, .7, .9).translate(0, 1.25, 0), wood],
+      [new THREE.ConeGeometry(1.05, 1.6, 4).rotateY(Math.PI / 4).translate(0, 2.35, 0), thatch],
+      [new THREE.BoxGeometry(.9, .9, .9).translate(0, .45, 0).scale(.12, 1, .12).translate(.38, 0, .38), wood],
+      [new THREE.BoxGeometry(.9, .9, .9).translate(0, .45, 0).scale(.12, 1, .12).translate(-.38, 0, -.38), wood],
+    ];
+    return scatter(spots.map(s => ({ lat: s.lat, lon: s.lon })), parts, ctx, () => spec.scale || 1.2);
+  };
+
+  // { at, heading, count, spacingM, style:'spanish'|'stone' } | { area, count, style } houses along a street or scattered
+  L.houses = (spec, ctx) => {
+    const stone = spec.style === 'stone';
+    const lower = lambert(stone ? 0x8e8a80 : 0xe9e1cf), upper = lambert(stone ? 0x8e8a80 : 0x6b4a32), roof = lambert(stone ? 0x9a7b4c : 0x9c4a32);
+    const parts = stone
+      ? [[new THREE.BoxGeometry(1.6, .9, 1.1).translate(0, .45, 0), lower], [new THREE.CylinderGeometry(0, 1.25, .9, 4, 1).rotateY(Math.PI / 4).scale(1.35, 1, 1).translate(0, 1.35, 0), roof]]
+      : [[new THREE.BoxGeometry(1.2, .8, 1.6).translate(0, .4, 0), lower], [new THREE.BoxGeometry(1.35, .75, 1.75).translate(0, 1.18, 0), upper], [new THREE.CylinderGeometry(0, 1.25, .7, 4, 1).rotateY(Math.PI / 4).scale(.85, 1, 1.15).translate(0, 1.9, 0), roof]];
+    let pts;
+    if (spec.at) {
+      const hd = deg(spec.heading || 0), n = spec.count || 16, gap = (spec.spacingM || 60) / 111320;
+      pts = [];
+      for (let i = 0; i < n; i++) {
+        const along = (Math.floor(i / 2) - n / 4) * gap, side = (i % 2 ? 1 : -1) * gap * 1.2; // two facing rows with a street between
+        const lat = spec.at[0] + Math.cos(hd) * along - Math.sin(hd) * side;
+        const lon = spec.at[1] + (Math.sin(hd) * along + Math.cos(hd) * side) / Math.cos(spec.at[0] * Math.PI / 180);
+        pts.push({ lat, lon, yaw: -hd + (i % 2 ? Math.PI / 2 : -Math.PI / 2) });
+      }
+    } else pts = ctx.sample(spec.area, spec.count || 20, 1, spec.maxM ?? 400);
+    return scatter(pts, parts, ctx, () => spec.scale || 1);
+  };
+
+  // { at, heading } a horse-drawn kalesa
+  L.kalesa = (spec, ctx) => {
+    const g = new THREE.Group(), wood = lambert(0x7a3b28), black = lambert(0x1e1e1e), horse = lambert(0x5a3a26), cream = lambert(0xe9dcc4);
+    g.add(box(.9, .6, 1.1, wood, 0, .9, 0), box(1, .08, 1.2, black, 0, 1.4, 0), box(.95, .5, .05, cream, 0, 1.15, .55));
+    for (const x of [-.55, .55]) g.add(new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .06, 10).rotateZ(Math.PI / 2), black).translateX(x).translateY(.45));
+    g.add(box(.05, .05, 1.3, black, -.3, .8, 1.2), box(.05, .05, 1.3, black, .3, .8, 1.2));
+    g.add(box(.4, .5, 1.1, horse, 0, 1, 1.9), box(.22, .5, .3, horse, 0, 1.4, 2.5));
+    for (const [x, z] of [[-.12, 1.5], [.12, 1.5], [-.12, 2.3], [.12, 2.3]]) g.add(box(.09, .7, .09, horse, x, .35, z));
+    g.position.copy(ctx.geo(spec.at[0], spec.at[1])); g.rotation.y = -deg(spec.heading || 0) + Math.PI; g.scale.setScalar(spec.scale || .9);
+    return g;
+  };
+
+  // { at, scale } octagonal kiosk with a tiled roof and a cross on top (Magellan's Cross)
+  L.kiosk = (spec, ctx) => {
+    const g = new THREE.Group(), wall = lambert(0xd8cfbd), roof = lambert(0x8e3b2c), wood = lambert(0x4a2e1c);
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.6, 1.6, 8), wall).translateY(.8));
+    g.add(new THREE.Mesh(new THREE.ConeGeometry(2.1, 1.5, 8), roof).translateY(2.35));
+    g.add(box(.12, 1.2, .12, wood, 0, 3.6, 0), box(.6, .12, .12, wood, 0, 3.85, 0));
+    g.position.copy(ctx.geo(spec.at[0], spec.at[1])); g.scale.setScalar(spec.scale || 1.4);
+    return g;
+  };
+
+  // { at, count, spreadM } whale sharks cruising just under the surface, dorsal fins breaking it
+  L.whaleShark = (spec, ctx) => {
+    const group = new THREE.Group(), skin = lambert(0x2e4a5c), belly = lambert(0xc9d3d6), items = [];
+    for (const s of waterSpots(spec, ctx, spec.count || 3)) {
+      const f = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 5), skin); body.scale.set(.9, .55, 3.2);
+      const under = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 5, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), belly); under.scale.set(.88, .5, 3.1);
+      const dorsal = new THREE.Mesh(new THREE.ConeGeometry(.3, 1.1, 3), skin); dorsal.position.set(0, .75, -.4); dorsal.rotation.x = -.35;
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(.6, 1.6, 3).rotateX(Math.PI / 2), skin); tail.position.z = -3.6; tail.scale.set(.25, 1.6, 1);
+      f.add(body, under, dorsal, tail);
+      const p = ctx.geo(s.lat, s.lon, 0);
+      f.userData = { cx: p.x, cz: p.z, r: 3 + ctx.rnd() * 4, a: ctx.rnd() * 6.28, s: (.08 + ctx.rnd() * .05) * (ctx.rnd() < .5 ? 1 : -1), tail };
+      f.position.set(p.x, -.55, p.z); f.scale.setScalar(spec.scale || .9);
+      group.add(f); items.push(f);
+    }
+    group.userData.tick = (t, dt, night, reduce) => {
+      if (reduce) return;
+      for (const f of items) {
+        const u = f.userData; u.a += u.s * dt;
+        f.position.x = u.cx + Math.cos(u.a) * u.r; f.position.z = u.cz + Math.sin(u.a) * u.r;
+        f.rotation.y = -u.a + (u.s > 0 ? Math.PI : 0);
+        u.tail.rotation.y = Math.sin(t * 2.4) * .35;
+      }
+    };
+    return group;
+  };
+
+  // { at, scale } white lighthouse whose lamp glows after dark (Basco, Naidi Hills)
+  L.lighthouse = (spec, ctx) => {
+    const g = new THREE.Group(), white = lambert(0xf1eee6), red = lambert(0x9a2f25), dark = lambert(0x2a2a2a), stone = lambert(0x9a958b);
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(.55, .85, 4.6, 10), white).translateY(2.3));
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(.75, .75, .15, 10), dark).translateY(4.65));
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .6, 10), lambert(0xffe7a8, { emissive: 0x5a4210 })).translateY(5.0));
+    g.add(new THREE.Mesh(new THREE.ConeGeometry(.55, .55, 10), red).translateY(5.55));
+    g.add(box(1.8, .8, 1.2, stone, 1.4, .4, 0));
+    const lampGeo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 5, 0], 3));
+    const lampMat = new THREE.PointsMaterial({ size: 9, map: ctx.glow, color: 0xffd98a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+    g.add(new THREE.Points(lampGeo, lampMat));
+    g.position.copy(ctx.geo(spec.at[0], spec.at[1])); g.position.y -= .1; g.scale.setScalar(spec.scale || 1.5);
+    g.userData.tick = (t, dt, night) => { lampMat.opacity = night * (.75 + .25 * Math.sin(t * 2)); };
+    return g;
+  };
+
+  // { at, altM } a faint red glow at an active summit, brighter after dark (Mayon)
+  L.summitGlow = (spec, ctx) => {
+    const p = ctx.geo(spec.at[0], spec.at[1], spec.altM);
+    const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([p.x, p.y, p.z], 3));
+    const mat = new THREE.PointsMaterial({ size: 26, map: ctx.glow, color: 0xff5a2a, transparent: true, opacity: .2, depthWrite: false, blending: THREE.AdditiveBlending });
+    const pts = new THREE.Points(geo, mat);
+    pts.userData.tick = (t, dt, night) => { mat.opacity = (.18 + night * .7) * (.85 + .15 * Math.sin(t * 1.7)); };
+    return pts;
+  };
+
   PH.waveY = waveY;
   PH.loadGLB = loadGLB;
   PH.scatter = scatter;

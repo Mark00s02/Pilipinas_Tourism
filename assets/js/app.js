@@ -117,7 +117,7 @@
   }
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
-  async function waitLoaded(ms = 15000) {
+  async function waitLoaded(ms = 30000) { // generous: headless runs render on the CPU (SwiftShader)
     const t0 = Date.now();
     while (!$('#loader').classList.contains('done')) { if (Date.now() - t0 > ms) throw new Error(`load timeout at ${location.hash}`); await sleep(100); }
   }
