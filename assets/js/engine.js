@@ -6,8 +6,10 @@
   const PH = (window.PH = window.PH || {});
   const { clamp, smooth, lerp, decodeTerrain, geoToGrid, applyTouchups, mulberry32 } = PH_CORE;
   const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const OVERVIEW = /[?&]overview=1(&|$)/.test(location.search); // dev view: straight down over the whole area, no haze
   const COARSE = matchMedia('(pointer: coarse)').matches;
   const WORLD = 380; // world units across a destination's box
+  const FOG_FAR = 900; // far enough to see the real surroundings fade into haze
   const C = h => new THREE.Color(h);
   const UW_FOG = new THREE.Color('#0d5560'), UW_LIGHT = new THREE.Color('#8fe0dc');
 
@@ -34,7 +36,7 @@
     } catch (e) { return null; }
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, COARSE ? 1.25 : 1.75));
     renderer.outputEncoding = THREE.sRGBEncoding;
-    const camera = new THREE.PerspectiveCamera(42, 1, .5, 2000);
+    const camera = new THREE.PerspectiveCamera(42, 1, .5, 4000);
     const resize = () => { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.fov = camera.aspect < .8 ? 58 : 42; camera.updateProjectionMatrix(); };
     addEventListener('resize', resize); resize();
     const mouse = { x: 0, y: 0, sx: 0, sy: 0 };
@@ -68,6 +70,7 @@
       W.fresh = false;
       W.camPos.lerp(tPos, k); W.camLook.lerp(tLook, k);
       camera.position.copy(W.camPos); camera.lookAt(W.camLook);
+      if (OVERVIEW) { camera.position.set(0, 1500, .01); camera.lookAt(0, 0, 0); }
 
       const night = smooth(W.night[0], W.night[1], W.sp), P = W.PAL;
       W.skyU.uTop.value.lerpColors(P.top[0], P.top[1], night);
@@ -90,7 +93,7 @@
         W.hemi.color.lerp(UW_LIGHT, uw);
         W.sunLight.intensity *= 1 - uw * .45;
       }
-      W.scene.fog.near = lerp(70, 1, uw); W.scene.fog.far = lerp(560, 42, uw);
+      W.scene.fog.near = lerp(70, 1, uw); W.scene.fog.far = OVERVIEW ? 1e6 : lerp(FOG_FAR, 42, uw);
       W.sky.visible = W.stars.visible = uw < .5;
       W.scene.background = uw >= .5 ? W.scene.fog.color : null;
       if (!REDUCE) W.waterU.uTime.value = t;
@@ -118,9 +121,13 @@
         return new Promise((resolve, reject) => setTimeout(async () => {
           if (my !== token) return resolve(false);
           // Fetch this destination's 3D models first; a model that fails just leaves its landmark out.
-          await PH.loadModels(modelsFor(desc)).catch(e => console.warn('some 3D models did not load', e));
+          // Fetch this destination's 3D models and satellite imagery first; anything that fails is simply left out.
+          const [, sat] = await Promise.all([
+            PH.loadModels(modelsFor(desc)).catch(e => console.warn('some 3D models did not load', e)),
+            PH.loadSatellite(desc.id).catch(e => { console.warn('no satellite imagery; using plain colours', e); return null; }),
+          ]);
           if (my !== token) return resolve(false);
-          try { world = buildWorld(desc); } catch (e) { world = null; return reject(e); } // caller hides the loader; the text page stays usable
+          try { world = buildWorld(desc, sat && sat.inner, renderer, sat && sat.outer); } catch (e) { world = null; return reject(e); } // caller hides the loader; the text page stays usable
           world.sp = target; world.fresh = true;
           onFirstFrame = resolve;
         }, 30));
@@ -137,7 +144,7 @@
     };
   }
 
-  function buildWorld(desc) {
+  function buildWorld(desc, satImage, renderer, outerSat) {
     const T = desc.terrain || {}, entry = window.PH_TERRAIN && window.PH_TERRAIN[desc.id];
     if (!entry) throw new Error(`no baked terrain for ${desc.id}`);
     const grid = applyTouchups(decodeTerrain(entry), T.touchups, desc.seed || 1);
@@ -194,7 +201,7 @@
     const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.4, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false }));
     scene.add(stars);
 
-    scene.fog = new THREE.Fog(PAL.fog[0].clone(), 70, 560);
+    scene.fog = new THREE.Fog(PAL.fog[0].clone(), 70, FOG_FAR);
     const hemi = new THREE.HemisphereLight(PAL.hemiSky[0].clone(), PAL.hemiGround[0].clone(), .85);
     const sunLight = new THREE.DirectionalLight(0xffb27a, 1.5);
     sunLight.position.copy(SUN_DIR).multiplyScalar(200);
@@ -228,12 +235,48 @@
       for (let k = 0; k < 3; k++) tmp.toArray(cols, (i + k) * 3);
     }
     terr.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-    scene.add(new THREE.Mesh(terr, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
+    // Real satellite imagery draped over the real heights when we have it; the height/slope colours otherwise.
+    let terrMat;
+    if (satImage) {
+      const tex = new THREE.Texture(satImage);
+      tex.encoding = THREE.sRGBEncoding; tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); tex.needsUpdate = true;
+      terrMat = new THREE.MeshLambertMaterial({ map: tex, flatShading: true, color: new THREE.Color(1.3, 1.3, 1.25) }); // >1 lifts the photo under dusk light
+    } else terrMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    scene.add(new THREE.Mesh(terr, terrMat));
+
+    // The real surroundings, coarse and six times wider, so mainland places do not end in a fake coastline.
+    // Where the detailed square sits, the ring tucks underneath: just below it near the seam, far below inside.
+    const outerEntry = window.PH_TERRAIN[`${desc.id}:outer`];
+    if (outerEntry) {
+      const og = decodeTerrain(outerEntry), OW = WORLD * (og.cellM * og.w) / spanM, half = WORLD / 2, step = OW / (og.w - 1);
+      const ring = new THREE.PlaneGeometry(OW, OW, og.w - 1, og.h - 1);
+      ring.rotateX(-Math.PI / 2);
+      const rp = ring.attributes.position;
+      for (let i = 0; i < rp.count; i++) {
+        const x = rp.getX(i), z = rp.getZ(i), inside = Math.max(Math.abs(x), Math.abs(z)) < half;
+        let y = worldY(og.data[i]);
+        if (inside) {
+          const nearSeam = Math.max(Math.abs(x), Math.abs(z)) > half - step * 1.5;
+          y = nearSeam ? worldY(heightM((x / WORLD + .5) * (w - 1), (z / WORLD + .5) * (h - 1))) - .8 : -14;
+        }
+        rp.setY(i, y);
+      }
+      const ringFlat = ring.toNonIndexed(); ring.dispose();
+      ringFlat.computeVertexNormals();
+      let ringMat;
+      if (satImage && outerSat) {
+        const t2 = new THREE.Texture(outerSat); t2.encoding = THREE.sRGBEncoding; t2.needsUpdate = true;
+        ringMat = new THREE.MeshLambertMaterial({ map: t2, flatShading: true, color: new THREE.Color(1.3, 1.3, 1.25) });
+      } else ringMat = new THREE.MeshLambertMaterial({ color: COL.greens[1], flatShading: true });
+      scene.add(new THREE.Mesh(ringFlat, ringMat));
+    }
 
     // Water with GPU waves (flat shading derives normals from the displaced surface)
     const waterU = { uTime: { value: 0 } };
-    const waterGeo = new THREE.PlaneGeometry(900, 900, 160, 160); waterGeo.rotateX(-Math.PI / 2);
-    const waterMat = new THREE.MeshPhongMaterial({ color: PAL.water[0].clone(), specular: 0xffc590, shininess: 70, flatShading: true, transparent: true, opacity: T.waterOpacity ?? .86, side: THREE.DoubleSide }); // seen from below on dives
+    // 1700 reaches the haze on every side; a 2356-wide plane drew a translucent band across the sky (seen on Dabaw), so stay below that.
+    const waterGeo = new THREE.PlaneGeometry(1700, 1700, 200, 200); waterGeo.rotateX(-Math.PI / 2);
+    // Thinner over satellite imagery so real reefs and shallows show; double-sided so dives see the surface from below.
+    const waterMat = new THREE.MeshPhongMaterial({ color: PAL.water[0].clone(), specular: 0xffc590, shininess: 70, flatShading: true, transparent: true, opacity: T.waterOpacity ?? (satImage ? .62 : .86), side: THREE.DoubleSide });
     waterMat.onBeforeCompile = sh => {
       sh.uniforms.uTime = waterU.uTime;
       sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>

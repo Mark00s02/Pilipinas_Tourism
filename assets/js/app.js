@@ -171,7 +171,7 @@
     const bad = [];
     await go('#/bohol'); await sleep(300);
     scrollTo(0, document.documentElement.scrollHeight); await sleep(300);
-    $('#view-dest .fin-actions a.ghost').click(); await sleep(1500);
+    $('#view-dest .fin-actions a.ghost').click(); await sleep(2500); // a smooth scroll up ~7,700 px takes ~1.5 s
     if (scrollY > 40) bad.push(`back-to-top left scrollY at ${Math.round(scrollY)}`);
     const hillsLink = $$('#navlinks a').find(a => a.getAttribute('href') === '#/bohol/hills');
     hillsLink.click(); await sleep(1500);

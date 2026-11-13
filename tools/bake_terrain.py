@@ -87,7 +87,11 @@ def fetch_tile(z, x, y):
     return decode_terrarium(np.asarray(Image.open(path).convert('RGB')))
 
 
-def bake(tid, lat, lon, span_km, grid=192):
+OUTER_FACTOR, OUTER_GRID = 6, 160  # the wide, coarse ring of real land and sea around each destination
+
+
+def grid_for(lat, lon, span_km, grid):
+    """Real heights (int16 metres) on a grid x grid square centred on lat/lon, span_km wide."""
     half = span_km / 2
     dlat = half / 111.32
     dlon = half / (111.32 * math.cos(math.radians(lat)))
@@ -104,11 +108,19 @@ def bake(tid, lat, lon, span_km, grid=192):
     box = ((px0 - x0) * 256, (py0 - y0) * 256, (px1 - x0) * 256, (py1 - y0) * 256)
     img = Image.fromarray(mosaic, mode='F').resize((grid, grid), Image.BILINEAR, box=box)
     arr = np.clip(np.rint(np.asarray(img)), -32768, 32767).astype(np.int16)
-    cell_m = span_km * 1000 / grid
+    return arr, [south, west, north, east], span_km * 1000 / grid, z
+
+
+def bake(tid, lat, lon, span_km, grid=192):
+    arr, bbox, cell_m, z = grid_for(lat, lon, span_km, grid)
+    # The surroundings: without them a mainland place (Davao, Vigan, Banaue) looks like an island in an empty sea.
+    outer, obox, ocell, oz = grid_for(lat, lon, span_km * OUTER_FACTOR, OUTER_GRID)
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, f'{tid}.js'), 'w', encoding='utf-8') as f:
-        f.write(write_js(tid, arr, [south, west, north, east], cell_m))
-    print(f'{tid}: z{z} {x1 - x0 + 1}x{y1 - y0 + 1} tiles -> {grid}^2, min {arr.min()} m, max {arr.max()} m, land {np.mean(arr > 0):.0%}')
+        f.write(write_js(tid, arr, bbox, cell_m))
+        f.write(write_js(f'{tid}:outer', outer, obox, ocell))
+    print(f'{tid}: z{z} -> {grid}^2, min {arr.min()} m, max {arr.max()} m, land {np.mean(arr > 0):.0%}; '
+          f'outer z{oz} {span_km * OUTER_FACTOR:.0f} km, land {np.mean(outer > 0):.0%}')
 
 
 def main(argv):

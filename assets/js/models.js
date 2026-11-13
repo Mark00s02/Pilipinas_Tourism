@@ -8,16 +8,29 @@
   const PH = (window.PH = window.PH || {});
   const pending = {}, templates = {};
 
-  function addScript(name) {
-    if (window.PH_MODELS && window.PH_MODELS[name]) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = `assets/models/${name}.glb.js`;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error(`model ${name} failed to load`));
-      document.head.appendChild(s);
-    });
-  }
+  // Classic <script> injection: works from file://, where fetch() of local files does not.
+  PH.loadScript = src => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`${src} failed to load`));
+    document.head.appendChild(s);
+  });
+  const addScript = name => (window.PH_MODELS && window.PH_MODELS[name] ? Promise.resolve() : PH.loadScript(`assets/models/${name}.glb.js`));
+
+  // Satellite imagery for a destination (assets/terrain/<id>.sat.js: WebP data URIs for the detailed square and its
+  // wide surroundings), decoded once and kept. Resolves { inner, outer }; outer is null if the file has none.
+  const satImages = {};
+  const decode = uri => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('satellite image did not decode'));
+    img.src = uri;
+  });
+  PH.loadSatellite = id => satImages[id] || (satImages[id] = (window.PH_SAT && window.PH_SAT[id] ? Promise.resolve() : PH.loadScript(`assets/terrain/${id}.sat.js`))
+    .then(() => Promise.all([decode(window.PH_SAT[id]), window.PH_SAT[`${id}:outer`] ? decode(window.PH_SAT[`${id}:outer`]) : null]))
+    .then(([inner, outer]) => ({ inner, outer }))
+    .catch(e => { delete satImages[id]; throw e; }));
 
   function parse(name) {
     const bytes = Uint8Array.from(atob(window.PH_MODELS[name]), c => c.charCodeAt(0));
