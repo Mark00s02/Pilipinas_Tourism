@@ -35,7 +35,7 @@
     </div>
     <article class="map-card" hidden aria-live="polite"></article>
   </section>
-  <p class="map-credits tiny">Province outlines: <a href="https://www.geoboundaries.org/">geoBoundaries</a> (NAMRIA, PSA, OCHA) · CC BY 3.0 IGO. Elevation: <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles</a> on AWS Open Data. Photo credits on each destination page. A design concept, not an official tourism site.</p>
+  <p class="map-credits tiny">Province outlines: <a href="https://www.geoboundaries.org/">geoBoundaries</a> (NAMRIA, PSA, OCHA) · CC BY 3.0 IGO. Elevation: <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles</a> on AWS Open Data. Imagery: <a href="https://s2maps.eu">Sentinel-2 cloudless - https://s2maps.eu</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016), CC BY 4.0. Photo credits on each destination page. A design concept, not an official tourism site.</p>
 </main>
 <div class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="ov-h">
   <div class="overlay-box">

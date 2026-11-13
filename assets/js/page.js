@@ -100,6 +100,7 @@
     <ol>${(desc.credits || []).map(c => `<li><b>${esc(c.plate)}</b> — <a href="${esc(c.url)}">${esc(c.title)}</a>, ${esc(c.author)} · ${c.licenseUrl ? `<a href="${esc(c.licenseUrl)}">${esc(c.license)}</a>` : esc(c.license)}</li>`).join('')}</ol>
     <p style="margin:12px 0 0">Images resized and converted to WebP.</p>
     <p style="margin:12px 0 0">Elevation — <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles</a> on AWS Open Data (SRTM, ETOPO1, GMTED and others). Signature features shaped by hand on top.</p>
+    <p style="margin:12px 0 0">Satellite imagery — <a href="https://s2maps.eu">Sentinel-2 cloudless - https://s2maps.eu</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016) · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Levels adjusted.</p>
     ${modelCredits(desc)}
     ${(desc.creditsExtra || []).map(x => `<p style="margin:12px 0 0">${x}</p>`).join('')}
   </div>
