@@ -1,7 +1,7 @@
 PH.register({
   id: 'siargao', name: 'Siargao', region: 'Surigao del Norte · Mindanao', province: 'Surigao del Norte',
   hook: 'Cloud 9 surf, island hopping and Sugba Lagoon', bestMonths: 'Mar – Oct · surf Sep – Nov',
-  mapPin: [9.85, 126.05], seed: 9, sunDir: [-1, .09, .2],
+  mapPin: [9.85, 126.05], mapLabel: 'up', seed: 9, sunDir: [-1, .09, .2],
   terrain: {
     vScale: 4.5, beachM: 4,
     colors: { greens: ['#2a5226', '#34602a', '#3f6c2e', '#4b7834'], sand: '#e0d3ad', reef: '#41b0a2' },

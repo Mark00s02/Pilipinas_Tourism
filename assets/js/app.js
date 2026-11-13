@@ -21,6 +21,25 @@
     x.putImageData(d, 0, 0); $('#grain').style.backgroundImage = `url(${c.toDataURL()})`;
   }
 
+  function selftestReport(name, problems) {
+    const p = document.createElement('pre'); p.id = 'selftest';
+    p.textContent = problems.length ? `selftest:${name} FAIL ${problems.join('; ')}` : `selftest:${name} ok`;
+    document.body.appendChild(p);
+  }
+  // Every map pin must be a comfortable tap target (>= 44x44 CSS px) and inside the viewport.
+  function selftestMap() {
+    requestAnimationFrame(() => {
+      const bad = [];
+      document.querySelectorAll('.pin').forEach(b => {
+        const r = b.getBoundingClientRect();
+        if (r.width < 44 || r.height < 44) bad.push(`${b.dataset.id} ${r.width}x${r.height}`);
+        if (r.left < 0 || r.right > innerWidth) bad.push(`${b.dataset.id} off-screen`);
+      });
+      if (document.documentElement.scrollWidth > innerWidth) bad.push(`horizontal scroll ${document.documentElement.scrollWidth}>${innerWidth}`);
+      selftestReport('map', bad);
+    });
+  }
+
   function boot() {
     grain();
     let storage = null;
@@ -54,6 +73,7 @@
         document.body.dataset.view = 'map';
         document.title = 'Pilipinas — pick your next trip';
         if (!map) map = PH.renderMap(viewMap, passport);
+        if (/[?&]selftest=map(&|$)/.test(location.search)) selftestMap();
         scrollTo(0, 0);
         hideLoader();
         return;

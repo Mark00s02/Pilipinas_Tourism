@@ -1,7 +1,7 @@
 PH.register({
   id: 'bohol', name: 'Bohol', region: 'Central Visayas', province: 'Bohol',
   hook: 'The Chocolate Hills, tarsiers and a lazy jade river', bestMonths: 'Dec – May',
-  mapPin: [9.83, 124.17], seed: 5, sunDir: [-.9, .1, -.5],
+  mapPin: [9.83, 124.17], mapLabel: 'down', seed: 5, sunDir: [-.9, .1, -.5],
   terrain: {
     vScale: 2.2, beachM: 4,
     colors: { greens: ['#2c4a22', '#3a5a26', '#4b6a2c', '#5d7434'], rock: '#7a6a4c' },
