@@ -58,6 +58,21 @@
     const card = el.querySelector('.map-card'), off = [];
     const on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); off.push(() => t.removeEventListener(ev, fn, o)); };
     let selected = null;
+    const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches, frame = el.querySelector('.map-frame');
+    // Zoom the map toward the chosen spot, then hand over to the destination route.
+    function enter(id) {
+      if (REDUCE || frame.classList.contains('zooming')) { location.hash = `#/${id}`; return; }
+      const pin = el.querySelector(`.pin[data-id="${id}"]`);
+      frame.style.transformOrigin = `${pin.style.left} ${pin.style.top}`;
+      frame.classList.add('zooming');
+      setTimeout(() => { location.hash = `#/${id}`; }, 450);
+    }
+    on(el, 'click', e => {
+      const a = e.target.closest('a[href^="#/"]');
+      if (!a || e.metaKey || e.ctrlKey) return;
+      const id = a.getAttribute('href').slice(2);
+      if (PH.get(id)) { e.preventDefault(); enter(id); }
+    });
 
     function select(id) {
       selected = id;
@@ -85,14 +100,14 @@
       const id = pin.dataset.id;
       on(pin, 'pointerenter', e => { if (e.pointerType === 'mouse') select(id); });
       on(pin, 'focus', () => { if (pin.matches(':focus-visible')) select(id); }); // keyboard only: a tap also focuses, and must stay a first tap
-      on(pin, 'click', () => { if (selected === id) location.hash = `#/${id}`; else select(id); });
+      on(pin, 'click', () => { if (selected === id) enter(id); else select(id); });
     });
     // Tapping a destination's province works like tapping its pin.
     el.querySelectorAll('[data-province]').forEach(path => {
       const d = dests.find(x => x.province === path.dataset.province);
       if (!d) return;
       path.classList.add('is-dest');
-      on(path, 'click', () => { if (selected === d.id) location.hash = `#/${d.id}`; else select(d.id); });
+      on(path, 'click', () => { if (selected === d.id) enter(d.id); else select(d.id); });
       on(path, 'pointerenter', e => { if (e.pointerType === 'mouse') select(d.id); });
     });
 

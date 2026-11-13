@@ -111,7 +111,47 @@
     addEventListener('hashchange', route);
     route();
     PH.route = route;
+    const st = /[?&]selftest=(cycle|nogl)(&|$)/.exec(location.search);
+    if (st) (st[1] === 'cycle' ? selftestCycle : selftestNoGL)().catch(e => selftestReport(st[1], [String(e && e.stack || e)]));
   }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function waitLoaded(ms = 15000) {
+    const t0 = Date.now();
+    while (!$('#loader').classList.contains('done')) { if (Date.now() - t0 > ms) throw new Error(`load timeout at ${location.hash}`); await sleep(100); }
+  }
+  const go = async hash => { location.hash = hash; await sleep(60); await waitLoaded(); };
+
+  // Hop through every destination twice; GPU memory on the map must not grow between rounds,
+  // and a rapid A -> B switch must end showing B (both page and 3D scene).
+  async function selftestCycle() {
+    const bad = [], ids = PH.ids(), info = () => JSON.stringify(PH.engine.info());
+    await go('#/');
+    const rounds = [];
+    for (let r = 0; r < 2; r++) {
+      for (const id of ids) await go(`#/${id}`);
+      await go('#/'); await sleep(200);
+      rounds.push(info());
+    }
+    if (rounds[0] !== rounds[1]) bad.push(`GPU memory grew: ${rounds[0]} -> ${rounds[1]}`);
+    location.hash = `#/${ids[0]}`; await sleep(50);
+    location.hash = `#/${ids[1]}`; await sleep(60); await waitLoaded(); await sleep(300);
+    const shown = $('#view-dest .hero h1') && PH.get(ids[1]).hero.title === $('#view-dest .hero h1').textContent;
+    if (!shown) bad.push('rapid switch: page is not the last route');
+    if (!PH.engine.world || PH.engine.world.id !== ids[1]) bad.push(`rapid switch: scene is ${PH.engine.world && PH.engine.world.id}, expected ${ids[1]}`);
+    selftestReport('cycle', bad);
+  }
+
+  // Without WebGL a destination still shows its story, trip card and quiz.
+  async function selftestNoGL() {
+    const bad = [];
+    await go('#/bohol'); await sleep(200);
+    if (!document.documentElement.classList.contains('no-gl')) bad.push('no no-gl class');
+    if ($$('#view-dest .sec').length < 4) bad.push('sections missing');
+    if (!$('#view-dest .trip') || !$('#view-dest .quiz')) bad.push('trip card or quiz missing');
+    selftestReport('nogl', bad);
+  }
+  const $$ = s => [...document.querySelectorAll(s)];
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

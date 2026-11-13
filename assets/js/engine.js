@@ -248,7 +248,7 @@
     const followKey = desc.sections.findIndex(s => s.follow === 'eagle');
     const K = keys.length;
     return {
-      scene, sky, skyU, stars, PAL, hemi, sunLight, waterMat, waterU, ticks, keys, geo,
+      id: desc.id, scene, sky, skyU, stars, PAL, hemi, sunLight, waterMat, waterU, ticks, keys, geo,
       follow, followKey: followKey < 0 ? -1 : followKey + 1,
       night: desc.night || [K - 2.2, K - 1], // dusk lasts until the closing section unless a page asks otherwise
       camPos: keys[0][0].clone(), camLook: keys[0][1].clone(), sp: 0,
