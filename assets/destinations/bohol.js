@@ -9,6 +9,7 @@ PH.register({
   },
   landmarks: [
     { kind: 'belfry', at: [9.623, 123.912], scale: 1.4, heading: 20 },
+    { kind: 'tarsier', at: [9.690, 123.945], heading: 150, scale: 1 },
     { kind: 'palms', area: [9.56, 123.88, 9.66, 124.12], count: 140, maxM: 25 },
     { kind: 'cityLights', area: [9.60, 123.88, 9.66, 124.05], count: 500, maxM: 60 },
     { kind: 'bangka', area: [9.57, 123.88, 9.61, 124.0], count: 4 },
@@ -40,7 +41,7 @@ PH.register({
       plates: [
         { src: 'tarsier.webp', alt: 'Close-up of a Philippine tarsier with huge round eyes', w: 1600, h: 1067, caption: 'A Philippine tarsier' },
       ],
-      cam: { pos: [9.65, 123.97, 380], look: [9.70, 123.93, 120] },
+      cam: { pos: [9.676, 123.957, 330], look: [9.6910, 123.9462, 20] },
     },
     {
       id: 'loboc', nav: 'Loboc', navAlt: 'River', indexLabel: 'The river',

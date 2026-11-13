@@ -1,8 +1,8 @@
 """Print a destination's credits array (JS) from the fetch_photo log, in plate order.
-python tools/credits.py <id> <src1> <src2> ...   (reads .superpowers/credits/<id>.jsonl)"""
+python tools/credits.py <id> <src1> <src2> ...   (reads tools/credits/<id>.jsonl)"""
 import json, sys
 dest, order = sys.argv[1], sys.argv[2:]
-rows = {r['src']: r for r in map(json.loads, open(f'.superpowers/credits/{dest}.jsonl', encoding='utf-8'))}
+rows = {r['src']: r for r in map(json.loads, open(f'tools/credits/{dest}.jsonl', encoding='utf-8'))}
 out = []
 for i, src in enumerate(order, 1):
     r = rows[src]

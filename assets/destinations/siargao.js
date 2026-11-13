@@ -31,7 +31,7 @@ PH.register({
       plates: [
         { src: 'boardwalk.webp', alt: 'A wooden boardwalk and viewing tower on stilts over the sea at dusk', w: 1600, h: 1067, caption: 'The Cloud 9 boardwalk' },
       ],
-      cam: { pos: [9.792, 126.190, 230], look: [9.8125, 126.168, 0] },
+      cam: { pos: [9.7925, 126.1575, 200], look: [9.8125, 126.1720, -25] },
     },
     {
       id: 'islands', nav: 'Islands', navAlt: 'Hopping', indexLabel: 'The islands',

@@ -38,56 +38,7 @@
     });
   }
 
-  // Shared scatter helper: one InstancedMesh per part, each instance placed on the ground with a random yaw.
-  function scatter(points, parts, ctx, scaleFn) {
-    const group = new THREE.Group(), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s3 = new THREE.Vector3();
-    for (const [geo, mat] of parts) {
-      const im = new THREE.InstancedMesh(geo, mat, Math.max(1, points.length));
-      im.count = points.length;
-      points.forEach((p, i) => {
-        e.set(0, p.yaw ?? ctx.rnd() * 6.28, 0); q.setFromEuler(e);
-        const s = scaleFn ? scaleFn(i) : 1;
-        im.setMatrixAt(i, m4.compose(ctx.geo(p.lat, p.lon, p.alt), q, s3.set(s, s, s)));
-      });
-      group.add(im);
-    }
-    return group;
-  }
-
-  const FROND = (() => {
-    const g = new THREE.BufferGeometry(), v = [], n = 6, L = 3.2;
-    for (let i = 0; i < n; i++) {
-      const t0 = i / n, t1 = (i + 1) / n, w0 = Math.sin(t0 * Math.PI) * .45 + .05, w1 = Math.sin(t1 * Math.PI) * .45 + .05;
-      const y0 = -1.6 * t0 * t0, y1 = -1.6 * t1 * t1, x0 = t0 * L, x1 = t1 * L;
-      v.push(x0, y0, -w0, x1, y1, -w1, x1, y1 + .08, 0, x0, y0, -w0, x1, y1 + .08, 0, x0, y0 + .08, 0,
-             x0, y0 + .08, 0, x1, y1 + .08, 0, x1, y1, w1, x0, y0 + .08, 0, x1, y1, w1, x0, y0, w0);
-    }
-    g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.computeVertexNormals(); return g;
-  })();
-
   const L = (PH.landmarks = {});
-
-  // { area:[s,w,n,e], count, maxM? } palms on low land
-  L.palms = (spec, ctx) => {
-    const spots = ctx.sample(spec.area, spec.count || 150, 0.5, spec.maxM ?? 40);
-    const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(.11, .2, 1, 5).translate(0, .5, 0), lambert(0x4a3a2c), Math.max(1, spots.length));
-    const fronds = new THREE.InstancedMesh(FROND, lambert(0x2f5a2a, { side: THREE.DoubleSide }), Math.max(1, spots.length * 7));
-    trunks.count = spots.length; fronds.count = spots.length * 7;
-    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s3 = new THREE.Vector3(), p3 = new THREE.Vector3();
-    spots.forEach((s, i) => {
-      const base = ctx.geo(s.lat, s.lon).add(p3.set(0, -.2, 0)).clone();
-      const tall = 3.5 + ctx.rnd() * 3.5, lean = (ctx.rnd() - .5) * .35;
-      e.set(0, ctx.rnd() * 6.28, lean); q.setFromEuler(e);
-      trunks.setMatrixAt(i, m4.compose(base, q, s3.set(1, tall, 1)));
-      const top = new THREE.Vector3(0, tall, 0).applyQuaternion(q).add(base);
-      for (let k = 0; k < 7; k++) {
-        e.set((ctx.rnd() - .5) * .3, k / 7 * 6.28 + ctx.rnd() * .4, .25 + ctx.rnd() * .3); q.setFromEuler(e);
-        const sc = .7 + ctx.rnd() * .4;
-        fronds.setMatrixAt(i * 7 + k, m4.compose(top, q, s3.set(sc, sc, sc)));
-      }
-    });
-    const g = new THREE.Group(); g.add(trunks, fronds); return g;
-  };
 
   // { area, count, maxM } warm lights on low land that brighten at night
   L.cityLights = (spec, ctx) => {
@@ -191,7 +142,6 @@
   // Same swell as the water shader in engine.js, so floating things ride the waves.
   const waveY = (x, z, t) => Math.sin(x * .09 + t * .9) * .32 + Math.cos(z * .11 + t * .7) * .28 + Math.sin((x + z) * .23 + t * 1.6) * .1;
   const deg = d => d * Math.PI / 180;
-  const box = (w, h, d, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); return m; };
   const floaters = (group, items, lift = 0) => {
     group.userData.tick = (t, dt, night, reduce) => {
       if (reduce) return;
@@ -205,184 +155,6 @@
     return ctx.sample([spec.at[0] - d, spec.at[1] - d, spec.at[0] + d, spec.at[1] + d], count, -400, -.2);
   };
 
-  // { area | at, count } outrigger boats (bangka), exaggerated in size so they read at island scale
-  L.bangka = (spec, ctx) => {
-    const group = new THREE.Group(), items = [];
-    const hullM = lambert(0xf2efe6), trimM = lambert(0x2f6fa8), woodM = lambert(0x6b5338), roofM = lambert(0xd9d2c0);
-    for (const s of waterSpots(spec, ctx, spec.count || 6)) {
-      const b = new THREE.Group();
-      const hull = new THREE.Mesh(new THREE.CylinderGeometry(.32, .14, 3.4, 6, 1).rotateX(Math.PI / 2), hullM); hull.scale.y = .55;
-      b.add(hull, box(.1, .08, 3.2, trimM, 0, .14, 0));
-      for (const x of [-1.5, 1.5]) b.add(new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 3, 4).rotateX(Math.PI / 2), woodM).translateX(x));
-      for (const z of [-.8, .8]) b.add(box(3.1, .05, .06, woodM, 0, .2, z));
-      b.add(box(.7, .04, 1.2, roofM, 0, .75, -.2), box(.04, .55, .04, woodM, .3, .48, .3), box(.04, .55, .04, woodM, -.3, .48, -.7));
-      const p = ctx.geo(s.lat, s.lon, 0); b.position.set(p.x, 0, p.z); b.rotation.y = ctx.rnd() * 6.28; b.scale.setScalar(spec.scale || 1);
-      group.add(b); items.push(b);
-    }
-    floaters(group, items, .05);
-    return group;
-  };
-
-  // { at, scale, heading } stone church with a square bell tower (Baclayon, Cagsawa)
-  L.belfry = (spec, ctx) => {
-    const g = new THREE.Group(), stone = lambert(spec.color || 0xcfc4ab), dark = lambert(0x3c3a36), roof = lambert(0x7a4a36);
-    g.add(box(1.6, 4.2, 1.6, stone, 0, 2.1, 0), box(1.3, 1, 1.3, stone, 0, 4.7, 0));
-    g.add(new THREE.Mesh(new THREE.ConeGeometry(1, .9, 4).rotateY(Math.PI / 4), roof).translateY(5.65));
-    g.add(box(.5, .7, 1.62, dark, 0, 4.7, 0), box(1.62, .7, .5, dark, 0, 4.7, 0));
-    if (!spec.ruin) {
-      g.add(box(2.4, 2.2, 5, stone, -2.1, 1.1, .8));
-      g.add(new THREE.Mesh(new THREE.CylinderGeometry(0, 1.75, .9, 4, 1).rotateY(Math.PI / 4).scale(1, 1, 2.1), roof).translateX(-2.1).translateY(2.65).translateZ(.8));
-    }
-    const p = ctx.geo(spec.at[0], spec.at[1]); g.position.copy(p).y -= .2;
-    g.rotation.y = deg(spec.heading || 0); g.scale.setScalar(spec.scale || 1.6);
-    return g;
-  };
-
-  // { at, heading (deg, 0 = north), length (world units) } pier on stilts with a viewing tower at the end (Cloud 9)
-  L.boardwalk = (spec, ctx) => {
-    const g = new THREE.Group(), wood = lambert(0x8a6a48), roof = lambert(0x5b4636), len = spec.length || 14;
-    g.add(box(.9, .12, len, wood, 0, 1.2, -len / 2));
-    for (let z = 0; z <= len; z += 1.4) for (const x of [-.4, .4]) g.add(box(.1, 1.8, .1, wood, x, .3, -z));
-    const tz = -len - 1.2;
-    for (const [x, z] of [[-1.2, -1.2], [1.2, -1.2], [-1.2, 1.2], [1.2, 1.2]]) g.add(box(.14, 4.2, .14, wood, x, 1.4, tz + z));
-    g.add(box(2.8, .14, 2.8, wood, 0, 1.25, tz), box(2.8, .14, 2.8, wood, 0, 2.6, tz));
-    g.add(new THREE.Mesh(new THREE.ConeGeometry(2.3, 1, 4).rotateY(Math.PI / 4), roof).translateZ(tz).translateY(3.9));
-    // Walk from `at` along the heading until the water starts, so the pier begins at the real shoreline.
-    const hd = deg(spec.heading ?? 90), step = 40 / 111320;
-    let [lat, lon] = spec.at;
-    for (let i = 0; i < 100 && ctx.heightAt(lat, lon) > 0; i++) { lat += Math.cos(hd) * step; lon += Math.sin(hd) * step / Math.cos(lat * Math.PI / 180); }
-    const p = ctx.geo(lat, lon, 0); g.position.set(p.x, -.3, p.z);
-    g.rotation.y = -hd; // local -z points along the compass heading (0 = north, 90 = east)
-    return g;
-  };
-
-  // { at, count, spreadM } surfers on boards riding the swell
-  L.surfer = (spec, ctx) => {
-    const group = new THREE.Group(), items = [];
-    const boardM = lambert(0xf4f1e8), skin = lambert(0x8a5a3c), shirt = lambert(0xd8573a);
-    for (const s of waterSpots(spec, ctx, spec.count || 4)) {
-      const sf = new THREE.Group();
-      sf.add(box(.36, .06, 1.9, boardM));
-      sf.add(box(.3, .5, .22, shirt, 0, .55, 0), box(.2, .2, .2, skin, 0, .92, 0), box(.1, .4, .1, skin, .12, .22, .1), box(.1, .4, .1, skin, -.12, .22, -.1));
-      const p = ctx.geo(s.lat, s.lon, 0); sf.position.set(p.x, 0, p.z); sf.rotation.y = ctx.rnd() * 6.28; sf.scale.setScalar(spec.scale || 1.6);
-      group.add(sf); items.push(sf);
-    }
-    floaters(group, items, .08);
-    return group;
-  };
-
-  // { area | at, count } paraw: a bangka with tall sails (Boracay)
-  L.paraw = (spec, ctx) => {
-    const group = L.bangka(spec, ctx), cols = [0xf2efe6, 0x2f6fa8, 0xe2a23a, 0xc9473a, 0x3f8f6a];
-    group.children.forEach((b, i) => {
-      const mast = box(.07, 4.2, .07, lambert(0x6b5338), 0, 2.2, .2), sailM = lambert(cols[i % cols.length], { side: THREE.DoubleSide });
-      const sail = new THREE.Mesh(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, .5, .25, 0, 4.2, .2, 0, .6, -1.9, 0, 4.2, .2, 0, 3.6, -1.5, 0, .6, -1.9], 3)), sailM);
-      sail.geometry.computeVertexNormals(); sail.rotation.y = .5;
-      const jib = new THREE.Mesh(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, .6, .3, 0, 3.8, .22, 0, .6, 1.6], 3)), lambert(0xf2efe6, { side: THREE.DoubleSide }));
-      jib.geometry.computeVertexNormals();
-      b.add(mast, sail, jib);
-    });
-    return group;
-  };
-
-  // { area, count, minM, maxM } Ifugao houses: a box on four posts under a steep thatched pyramid
-  L.huts = (spec, ctx) => {
-    const wood = lambert(0x4e3826), thatch = lambert(0x8a6f45), spots = ctx.sample(spec.area, spec.count || 20, spec.minM ?? 0, spec.maxM ?? 9000);
-    const parts = [
-      [new THREE.BoxGeometry(.9, .7, .9).translate(0, 1.25, 0), wood],
-      [new THREE.ConeGeometry(1.05, 1.6, 4).rotateY(Math.PI / 4).translate(0, 2.35, 0), thatch],
-      [new THREE.BoxGeometry(.9, .9, .9).translate(0, .45, 0).scale(.12, 1, .12).translate(.38, 0, .38), wood],
-      [new THREE.BoxGeometry(.9, .9, .9).translate(0, .45, 0).scale(.12, 1, .12).translate(-.38, 0, -.38), wood],
-    ];
-    return scatter(spots.map(s => ({ lat: s.lat, lon: s.lon })), parts, ctx, () => spec.scale || 1.2);
-  };
-
-  // { at, heading, count, spacingM, style:'spanish'|'stone' } | { area, count, style } houses along a street or scattered
-  L.houses = (spec, ctx) => {
-    const stone = spec.style === 'stone';
-    const lower = lambert(stone ? 0x8e8a80 : 0xe9e1cf), upper = lambert(stone ? 0x8e8a80 : 0x6b4a32), roof = lambert(stone ? 0x9a7b4c : 0x9c4a32);
-    const parts = stone
-      ? [[new THREE.BoxGeometry(1.6, .9, 1.1).translate(0, .45, 0), lower], [new THREE.CylinderGeometry(0, 1.25, .9, 4, 1).rotateY(Math.PI / 4).scale(1.35, 1, 1).translate(0, 1.35, 0), roof]]
-      : [[new THREE.BoxGeometry(1.2, .8, 1.6).translate(0, .4, 0), lower], [new THREE.BoxGeometry(1.35, .75, 1.75).translate(0, 1.18, 0), upper], [new THREE.CylinderGeometry(0, 1.25, .7, 4, 1).rotateY(Math.PI / 4).scale(.85, 1, 1.15).translate(0, 1.9, 0), roof]];
-    let pts;
-    if (spec.at) {
-      const hd = deg(spec.heading || 0), n = spec.count || 16, gap = (spec.spacingM || 60) / 111320;
-      pts = [];
-      for (let i = 0; i < n; i++) {
-        const along = (Math.floor(i / 2) - n / 4) * gap, side = (i % 2 ? 1 : -1) * gap * 1.2; // two facing rows with a street between
-        const lat = spec.at[0] + Math.cos(hd) * along - Math.sin(hd) * side;
-        const lon = spec.at[1] + (Math.sin(hd) * along + Math.cos(hd) * side) / Math.cos(spec.at[0] * Math.PI / 180);
-        pts.push({ lat, lon, yaw: -hd + (i % 2 ? Math.PI / 2 : -Math.PI / 2) });
-      }
-    } else pts = ctx.sample(spec.area, spec.count || 20, 1, spec.maxM ?? 400);
-    return scatter(pts, parts, ctx, () => spec.scale || 1);
-  };
-
-  // { at, heading } a horse-drawn kalesa
-  L.kalesa = (spec, ctx) => {
-    const g = new THREE.Group(), wood = lambert(0x7a3b28), black = lambert(0x1e1e1e), horse = lambert(0x5a3a26), cream = lambert(0xe9dcc4);
-    g.add(box(.9, .6, 1.1, wood, 0, .9, 0), box(1, .08, 1.2, black, 0, 1.4, 0), box(.95, .5, .05, cream, 0, 1.15, .55));
-    for (const x of [-.55, .55]) g.add(new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .06, 10).rotateZ(Math.PI / 2), black).translateX(x).translateY(.45));
-    g.add(box(.05, .05, 1.3, black, -.3, .8, 1.2), box(.05, .05, 1.3, black, .3, .8, 1.2));
-    g.add(box(.4, .5, 1.1, horse, 0, 1, 1.9), box(.22, .5, .3, horse, 0, 1.4, 2.5));
-    for (const [x, z] of [[-.12, 1.5], [.12, 1.5], [-.12, 2.3], [.12, 2.3]]) g.add(box(.09, .7, .09, horse, x, .35, z));
-    g.position.copy(ctx.geo(spec.at[0], spec.at[1])); g.rotation.y = -deg(spec.heading || 0) + Math.PI; g.scale.setScalar(spec.scale || .9);
-    return g;
-  };
-
-  // { at, scale } octagonal kiosk with a tiled roof and a cross on top (Magellan's Cross)
-  L.kiosk = (spec, ctx) => {
-    const g = new THREE.Group(), wall = lambert(0xd8cfbd), roof = lambert(0x8e3b2c), wood = lambert(0x4a2e1c);
-    g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.6, 1.6, 8), wall).translateY(.8));
-    g.add(new THREE.Mesh(new THREE.ConeGeometry(2.1, 1.5, 8), roof).translateY(2.35));
-    g.add(box(.12, 1.2, .12, wood, 0, 3.6, 0), box(.6, .12, .12, wood, 0, 3.85, 0));
-    g.position.copy(ctx.geo(spec.at[0], spec.at[1])); g.scale.setScalar(spec.scale || 1.4);
-    return g;
-  };
-
-  // { at, count, spreadM } whale sharks cruising just under the surface, dorsal fins breaking it
-  L.whaleShark = (spec, ctx) => {
-    const group = new THREE.Group(), skin = lambert(0x2e4a5c), belly = lambert(0xc9d3d6), items = [];
-    for (const s of waterSpots(spec, ctx, spec.count || 3)) {
-      const f = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 5), skin); body.scale.set(.9, .55, 3.2);
-      const under = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 5, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), belly); under.scale.set(.88, .5, 3.1);
-      const dorsal = new THREE.Mesh(new THREE.ConeGeometry(.3, 1.1, 3), skin); dorsal.position.set(0, .75, -.4); dorsal.rotation.x = -.35;
-      const tail = new THREE.Mesh(new THREE.ConeGeometry(.6, 1.6, 3).rotateX(Math.PI / 2), skin); tail.position.z = -3.6; tail.scale.set(.25, 1.6, 1);
-      f.add(body, under, dorsal, tail);
-      const p = ctx.geo(s.lat, s.lon, 0);
-      f.userData = { cx: p.x, cz: p.z, r: 3 + ctx.rnd() * 4, a: ctx.rnd() * 6.28, s: (.08 + ctx.rnd() * .05) * (ctx.rnd() < .5 ? 1 : -1), tail };
-      f.position.set(p.x, -.55, p.z); f.scale.setScalar(spec.scale || .9);
-      group.add(f); items.push(f);
-    }
-    group.userData.tick = (t, dt, night, reduce) => {
-      if (reduce) return;
-      for (const f of items) {
-        const u = f.userData; u.a += u.s * dt;
-        f.position.x = u.cx + Math.cos(u.a) * u.r; f.position.z = u.cz + Math.sin(u.a) * u.r;
-        f.rotation.y = -u.a + (u.s > 0 ? Math.PI : 0);
-        u.tail.rotation.y = Math.sin(t * 2.4) * .35;
-      }
-    };
-    return group;
-  };
-
-  // { at, scale } white lighthouse whose lamp glows after dark (Basco, Naidi Hills)
-  L.lighthouse = (spec, ctx) => {
-    const g = new THREE.Group(), white = lambert(0xf1eee6), red = lambert(0x9a2f25), dark = lambert(0x2a2a2a), stone = lambert(0x9a958b);
-    g.add(new THREE.Mesh(new THREE.CylinderGeometry(.55, .85, 4.6, 10), white).translateY(2.3));
-    g.add(new THREE.Mesh(new THREE.CylinderGeometry(.75, .75, .15, 10), dark).translateY(4.65));
-    g.add(new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .6, 10), lambert(0xffe7a8, { emissive: 0x5a4210 })).translateY(5.0));
-    g.add(new THREE.Mesh(new THREE.ConeGeometry(.55, .55, 10), red).translateY(5.55));
-    g.add(box(1.8, .8, 1.2, stone, 1.4, .4, 0));
-    const lampGeo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 5, 0], 3));
-    const lampMat = new THREE.PointsMaterial({ size: 9, map: ctx.glow, color: 0xffd98a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
-    g.add(new THREE.Points(lampGeo, lampMat));
-    g.position.copy(ctx.geo(spec.at[0], spec.at[1])); g.position.y -= .1; g.scale.setScalar(spec.scale || 1.5);
-    g.userData.tick = (t, dt, night) => { lampMat.opacity = night * (.75 + .25 * Math.sin(t * 2)); };
-    return g;
-  };
-
   // { at, altM } a faint red glow at an active summit, brighter after dark (Mayon)
   L.summitGlow = (spec, ctx) => {
     const p = ctx.geo(spec.at[0], spec.at[1], spec.altM);
@@ -393,8 +165,161 @@
     return pts;
   };
 
+  /* ---------------------------------------------------------------- downloaded models (see assets/js/models.js)
+     Each builder lists the models it needs in .models; the engine loads them before building the scene.
+     Sizes are in world units and deliberately larger than life so landmarks read at island scale. */
+  const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+  const on = (ctx, lat, lon, sink = .15) => ctx.geo(lat, lon).add(V3(0, -sink, 0));
+  const scatterPoints = (ctx, area, count, minM, maxM, sizeJitter = .4) =>
+    ctx.sample(area, count, minM, maxM).map(s => ({ pos: on(ctx, s.lat, s.lon), yaw: ctx.rnd() * 6.28, scale: 1 - sizeJitter / 2 + ctx.rnd() * sizeJitter }));
+  const def = (kind, models, build) => { L[kind] = build; L[kind].models = models; };
+
+  // Boats and swimmers riding the swell: one clone each so they can bob independently.
+  function floating(spec, ctx, make, lift) {
+    const group = new THREE.Group(), items = [];
+    for (const s of waterSpots(spec, ctx, spec.count || 5)) {
+      const o = make();
+      const p = ctx.geo(s.lat, s.lon, 0);
+      o.position.set(p.x, lift, p.z); o.rotation.y = ctx.rnd() * 6.28;
+      group.add(o); items.push(o);
+    }
+    floaters(group, items, lift);
+    return group;
+  }
+
+  // { area:[s,w,n,e], count, maxM? } coconut palms on low land
+  def('palms', ['palm'], (spec, ctx) =>
+    PH.modelInstances('palm', scatterPoints(ctx, spec.area, spec.count || 150, .5, spec.maxM ?? 40), { height: 5.5 }));
+
+  // { area | at, count, scale } outrigger boats (a downloaded canoe stands in for the bangka)
+  def('bangka', ['canoe'], (spec, ctx) => floating(spec, ctx, () => PH.modelClone('canoe', { length: 3.4 * (spec.scale || 1) }), -.15));
+
+  // { area | at, count } paraw sailboats (Boracay)
+  def('paraw', ['sailboat'], (spec, ctx) => floating(spec, ctx, () => PH.modelClone('sailboat', { height: 6.5 * (spec.scale || 1) }), -.25));
+
+  // { at, count, spreadM, scale } surfers standing on boards
+  def('surfer', ['surfer', 'surfboard'], (spec, ctx) => floating(spec, ctx, () => {
+    const g = new THREE.Group(), k = spec.scale || 1;
+    const board = PH.modelClone('surfboard', { height: 2.3 * k }); // modelled standing on its tail: lay it flat
+    board.rotation.x = Math.PI / 2; board.position.set(0, .05, -1.15 * k);
+    const rider = PH.modelClone('surfer', { height: 1.8 * k }); rider.position.y = .1;
+    g.add(board, rider);
+    return g;
+  }, 0));
+
+  // { at, heading, ruin, scale } stone bell tower; with a church beside it unless it is a ruin (Cagsawa)
+  def('belfry', ['stonetower', 'church'], (spec, ctx) => {
+    const g = new THREE.Group(), k = spec.scale || 1;
+    g.add(PH.modelClone('stonetower', { height: 6.5 * k }, spec.ruin ? '#9b9387' : null));
+    if (!spec.ruin) { const church = PH.modelClone('church', { height: 5 * k }); church.position.set(-4 * k, 0, 1 * k); g.add(church); }
+    g.position.copy(on(ctx, spec.at[0], spec.at[1], .3)); g.rotation.y = deg(spec.heading || 0);
+    return g;
+  });
+
+  // { at, heading (deg, 0 = north), length } jetty from the shoreline out to a viewing pavilion (Cloud 9)
+  def('boardwalk', ['dock', 'gazebo'], (spec, ctx) => {
+    const hd = deg(spec.heading ?? 90), step = 40 / 111320;
+    let [lat, lon] = spec.at;
+    for (let i = 0; i < 100 && ctx.heightAt(lat, lon) > 0; i++) { lat += Math.cos(hd) * step; lon += Math.sin(hd) * step / Math.cos(lat * Math.PI / 180); }
+    const g = new THREE.Group(), len = spec.length || 12, seg = 3, n = Math.max(1, Math.round(len / seg)); g.name = 'boardwalk';
+    for (let i = 0; i < n; i++) {
+      const d = PH.modelClone('dock', { length: seg });
+      const sz = new THREE.Box3().setFromObject(d).getSize(V3());
+      if (sz.x > sz.z) d.rotation.y = Math.PI / 2; // run the planks along local z
+      d.position.set(0, -.2, -(i + .5) * seg); g.add(d);
+    }
+    const tower = PH.modelClone('gazebo', { height: 3.8 }); tower.position.set(0, .2, -n * seg - 1.6); g.add(tower);
+    const p = ctx.geo(lat, lon, 0); g.position.set(p.x, 0, p.z);
+    g.rotation.y = -hd; // local -z points along the compass heading (0 = north, 90 = east)
+    return g;
+  });
+
+  // { area, count, minM, maxM, scale } thatched huts (Ifugao)
+  def('huts', ['hut'], (spec, ctx) =>
+    PH.modelInstances('hut', scatterPoints(ctx, spec.area, spec.count || 20, spec.minM ?? 0, spec.maxM ?? 9000, .2), { height: 2.6 * (spec.scale || 1) }));
+
+  // { at, heading, count, spacingM, style } houses facing each other along a street, or { area, count, style } scattered
+  // style 'stone' = Ivatan-style stone houses (Batanes); otherwise two-storey town houses (Vigan)
+  def('houses', ['townhouse', 'stonehouse'], (spec, ctx) => {
+    const name = spec.style === 'stone' ? 'stonehouse' : 'townhouse', fit = { height: (spec.style === 'stone' ? 1.6 : 2.2) * (spec.scale || 1) };
+    let pts;
+    if (spec.at) {
+      const hd = deg(spec.heading || 0), n = spec.count || 16, gap = (spec.spacingM || 60) / 111320;
+      pts = [];
+      for (let i = 0; i < n; i++) {
+        const along = (Math.floor(i / 2) - n / 4) * gap, side = (i % 2 ? 1 : -1) * gap * 1.2; // two facing rows with a street between
+        const lat = spec.at[0] + Math.cos(hd) * along - Math.sin(hd) * side;
+        const lon = spec.at[1] + (Math.sin(hd) * along + Math.cos(hd) * side) / Math.cos(spec.at[0] * Math.PI / 180);
+        pts.push({ pos: on(ctx, lat, lon), yaw: -hd + (i % 2 ? -Math.PI / 2 : Math.PI / 2) });
+      }
+    } else pts = scatterPoints(ctx, spec.area, spec.count || 20, 1, spec.maxM ?? 400, .2);
+    return PH.modelInstances(name, pts, fit);
+  });
+
+  // { at, heading, scale } a horse-drawn kalesa
+  def('kalesa', ['horse', 'cart'], (spec, ctx) => {
+    const g = new THREE.Group(), k = spec.scale || 1;
+    const horse = PH.modelClone('horse', { height: 1.3 * k }); horse.position.z = 1.1 * k;
+    const cart = PH.modelClone('cart', { length: 1.7 * k });
+    const sz = new THREE.Box3().setFromObject(cart).getSize(V3());
+    if (sz.x > sz.z) cart.rotation.y = Math.PI / 2;
+    cart.position.z = -.6 * k;
+    g.add(horse, cart);
+    g.position.copy(on(ctx, spec.at[0], spec.at[1], .05)); g.rotation.y = -deg(spec.heading || 0) + Math.PI;
+    return g;
+  });
+
+  // { at, scale } open pavilion standing in for the kiosk of Magellan's Cross
+  def('kiosk', ['gazebo'], (spec, ctx) => {
+    const g = PH.modelClone('gazebo', { height: 4 * (spec.scale || 1) });
+    g.position.copy(on(ctx, spec.at[0], spec.at[1]));
+    return g;
+  });
+
+  // { at, count, spreadM, scale } whale sharks circling just under the surface (a recoloured shark model)
+  def('whaleShark', ['shark'], (spec, ctx) => {
+    const group = new THREE.Group(), items = [];
+    for (const s of waterSpots(spec, ctx, spec.count || 3)) {
+      const f = PH.modelClone('shark', { length: 6 * (spec.scale || 1) }, '#53687a');
+      const p = ctx.geo(s.lat, s.lon, 0);
+      f.userData = { cx: p.x, cz: p.z, r: 3 + ctx.rnd() * 4, a: ctx.rnd() * 6.28, s: (.08 + ctx.rnd() * .05) * (ctx.rnd() < .5 ? 1 : -1) };
+      f.position.set(p.x, -.9 * (spec.scale || 1), p.z);
+      group.add(f); items.push(f);
+    }
+    group.userData.tick = (t, dt, night, reduce) => {
+      if (reduce) return;
+      for (const f of items) {
+        const u = f.userData; u.a += u.s * dt;
+        f.position.x = u.cx + Math.cos(u.a) * u.r; f.position.z = u.cz + Math.sin(u.a) * u.r;
+        f.rotation.y = -u.a + (u.s > 0 ? 0 : Math.PI); // nose along the direction of travel
+      }
+    };
+    return group;
+  });
+
+  // { at, scale } lighthouse whose lamp glows after dark (Basco, Naidi Hills)
+  def('lighthouse', ['lighthouse'], (spec, ctx) => {
+    const k = spec.scale || 1, h = 7.5 * k, g = new THREE.Group();
+    g.add(PH.modelClone('lighthouse', { height: h }));
+    const lampMat = new THREE.PointsMaterial({ size: 9, map: ctx.glow, color: 0xffd98a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+    g.add(new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, h * .86, 0], 3)), lampMat));
+    g.position.copy(on(ctx, spec.at[0], spec.at[1], .1));
+    g.userData.tick = (t, dt, night) => { lampMat.opacity = night * (.75 + .25 * Math.sin(t * 2)); };
+    return g;
+  });
+
+  // { at, heading, scale } the Philippine tarsier (no free tarsier model exists; a small-primate model stands in)
+  def('tarsier', ['monkey'], (spec, ctx) => {
+    const g = PH.modelClone('monkey', { height: 4.5 * (spec.scale || 1) }); g.name = 'tarsier';
+    g.position.copy(on(ctx, spec.at[0], spec.at[1], .1)); g.rotation.y = -deg(spec.heading || 0) + Math.PI;
+    return g;
+  });
+
+  // { area, count, maxM } cattle grazing on open pasture (Batanes)
+  def('cattle', ['cow'], (spec, ctx) =>
+    PH.modelInstances('cow', scatterPoints(ctx, spec.area, spec.count || 20, 5, spec.maxM ?? 400, .2), { height: 1 }));
+
   PH.waveY = waveY;
   PH.loadGLB = loadGLB;
-  PH.scatter = scatter;
   PH.lambert = lambert;
 })();

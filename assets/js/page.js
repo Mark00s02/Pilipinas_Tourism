@@ -12,6 +12,14 @@
 
   const stats = list => `<div class="stats" data-rv="up">${(list || []).map(([b, s]) => `<div><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join('')}</div>`;
 
+  // "3D models — …" line for the downloaded models this destination's scene uses.
+  function modelCredits(desc) {
+    const all = window.PH_MODEL_CREDITS || {}, names = [...new Set(PH.modelsFor ? PH.modelsFor(desc) : [])].filter(n => all[n]);
+    if (!names.length) return '';
+    const items = names.map(n => { const c = all[n]; return `<a href="${esc(c.url)}">${esc(c.title)}</a>, ${esc(c.author)} · <a href="${esc(c.licenseUrl)}">${esc(c.license)}</a>`; });
+    return `<p style="margin:12px 0 0">3D models via Poly Pizza — ${items.join('; ')}. Optimised and recoloured; stylised stand-ins, not exact replicas.</p>`;
+  }
+
   function renderPage(desc, el, opts = {}) {
     const id = desc.id, img = p => `assets/img/${id}/${p.src}`, href = s => `#/${id}/${s}`;
     let plateNo = 0;
@@ -92,6 +100,7 @@
     <ol>${(desc.credits || []).map(c => `<li><b>${esc(c.plate)}</b> — <a href="${esc(c.url)}">${esc(c.title)}</a>, ${esc(c.author)} · ${c.licenseUrl ? `<a href="${esc(c.licenseUrl)}">${esc(c.license)}</a>` : esc(c.license)}</li>`).join('')}</ol>
     <p style="margin:12px 0 0">Images resized and converted to WebP.</p>
     <p style="margin:12px 0 0">Elevation — <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles</a> on AWS Open Data (SRTM, ETOPO1, GMTED and others). Signature features shaped by hand on top.</p>
+    ${modelCredits(desc)}
     ${(desc.creditsExtra || []).map(x => `<p style="margin:12px 0 0">${x}</p>`).join('')}
   </div>
 </footer>`;

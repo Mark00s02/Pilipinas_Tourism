@@ -22,6 +22,10 @@
     seabed: '#13231f', reef: '#2d7a70', cone: '#7d6a3e', terrace: '#7c9a3a',
   };
 
+  // Models a destination's landmarks need, from each builder's .models list (assets/js/landmarks.js).
+  const modelsFor = desc => (desc.landmarks || []).flatMap(s => (PH.landmarks[s.kind] && PH.landmarks[s.kind].models) || []);
+  PH.modelsFor = modelsFor;
+
   function create(canvas) {
     let renderer;
     try {
@@ -100,7 +104,10 @@
         const my = ++token;
         if (world) { dispose(world.scene); world = null; }
         if (onFirstFrame) { onFirstFrame(false); onFirstFrame = null; }
-        return new Promise((resolve, reject) => setTimeout(() => {
+        return new Promise((resolve, reject) => setTimeout(async () => {
+          if (my !== token) return resolve(false);
+          // Fetch this destination's 3D models first; a model that fails just leaves its landmark out.
+          await PH.loadModels(modelsFor(desc)).catch(e => console.warn('some 3D models did not load', e));
           if (my !== token) return resolve(false);
           try { world = buildWorld(desc); } catch (e) { world = null; return reject(e); } // caller hides the loader; the text page stays usable
           world.sp = target; world.fresh = true;
@@ -238,7 +245,8 @@
     for (const spec of desc.landmarks || []) {
       const build = PH.landmarks[spec.kind];
       if (!build) { console.warn(`unknown landmark: ${spec.kind}`); continue; }
-      const obj = build(spec, ctx);
+      let obj;
+      try { obj = build(spec, ctx); } catch (e) { console.warn(`landmark ${spec.kind} skipped`, e); continue; }
       scene.add(obj);
       if (obj.userData.tick) ticks.push(obj.userData.tick);
       if (obj.userData.follow) follow = obj;

@@ -40,7 +40,7 @@ PH.register({
       plates: [
         { src: 'paraw.webp', alt: 'A paraw sailboat with a blue and white sail on shallow turquoise water', w: 1600, h: 1200, caption: 'A paraw off White Beach' },
       ],
-      cam: { pos: [11.958, 121.906, 45], look: [11.962, 121.918, 8] },
+      cam: { pos: [11.955, 121.905, 70], look: [11.962, 121.918, -40] },
     },
     {
       id: 'puka', nav: 'Puka', navAlt: 'North shore', indexLabel: 'The north',

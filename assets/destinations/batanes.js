@@ -9,6 +9,7 @@ PH.register({
   palette: { water: ['#123e57', '#081c2a'] },
   landmarks: [
     { kind: 'lighthouse', at: [20.4537, 121.9654], scale: 1.6 },
+    { kind: 'cattle', area: [20.385, 121.965, 20.410, 121.990], count: 26, maxM: 300 },
     { kind: 'houses', area: [20.30, 121.86, 20.33, 121.885], count: 18, maxM: 60, style: 'stone', scale: 1 },
     { kind: 'houses', area: [20.36, 121.90, 20.39, 121.93], count: 14, maxM: 60, style: 'stone', scale: 1 },
     { kind: 'cityLights', area: [20.44, 121.955, 20.46, 121.98], count: 220, maxM: 40 },

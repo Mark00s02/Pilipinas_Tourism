@@ -1,7 +1,7 @@
 // Drive headless Edge/Chrome over the DevTools protocol: wait for the page to settle, print console errors,
 // optionally evaluate an expression and save a screenshot.
 // node tools/shoot.mjs <url-or-path[?q][#hash]> [--out shot.png] [--size 1440x900] [--wait 30000]
-//      [--until "<js expr>"] [--print "<js expr>"] [--settle 1500] [--gpu]
+//      [--until "<js expr>"] [--print "<js expr>"] [--settle 1500] [--gpu] [--section <id>]
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -67,6 +67,11 @@ try {
     await sleep(250);
   }
   if (!ok) { console.log(`TIMEOUT waiting for: ${until}`); code = 1; }
+  const section = opt('--section');
+  if (section) { // centre the camera on that section's keyframe: halfway through the section, then let the camera glide in
+    await evaluate(`(()=>{const s=document.getElementById(${JSON.stringify(section)}),n=s&&s.nextElementSibling;if(!s)return;const end=n?n.offsetTop:document.documentElement.scrollHeight;scrollTo(0,Math.max(0,s.offsetTop+(end-s.offsetTop)*.5-innerHeight*.5))})()`);
+    await sleep(4000);
+  }
   await sleep(settle);
   if (print) console.log(await evaluate(print));
   if (out) {
