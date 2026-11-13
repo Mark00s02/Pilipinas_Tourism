@@ -23,7 +23,8 @@ document.createElement = tag => { const el = realCreate(tag); if (tag === 'scrip
 </script>
 <script src="../assets/js/models.js"></script>
 <script>
-const names = Object.keys(window.PH_MODEL_CREDITS);
+const only = new URLSearchParams(location.search).get('only'); // ?only=a,b,c to preview a subset
+const names = only ? only.split(',') : Object.keys(window.PH_MODEL_CREDITS);
 const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
 r.setSize(innerWidth, innerHeight); r.outputEncoding = THREE.sRGBEncoding;
 const scene = new THREE.Scene(); scene.background = new THREE.Color('#1b2426');

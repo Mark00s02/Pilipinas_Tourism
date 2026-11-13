@@ -319,6 +319,70 @@
   def('cattle', ['cow'], (spec, ctx) =>
     PH.modelInstances('cow', scatterPoints(ctx, spec.area, spec.count || 20, 5, spec.maxM ?? 400, .2), { height: 1 }));
 
+  // { at:[lat,lon], depthM, radius } a coral garden on the floor of a dive basin: corals, schools of reef fish and
+  // sea turtles circling, light shafts from the surface and rising bubbles. Pair it with a `basin` touch-up.
+  const REEF_MODELS = ['coral-set', 'coral-a', 'anemone', 'seaweed', 'rocks', 'starfish', 'clownfish', 'bluetang', 'butterflyfish', 'parrotfish', 'turtle', 'turtle-b', 'shark'];
+  def('reef', REEF_MODELS, (spec, ctx) => {
+    const g = new THREE.Group(), rnd = ctx.rnd, R = spec.radius || 9;
+    const c = ctx.geo(spec.at[0], spec.at[1], -(spec.depthM || 60)), floorY = c.y;
+    const sand = new THREE.Mesh(new THREE.CircleGeometry(R * 1.6, 48).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: '#cdbb8c' }));
+    sand.position.set(c.x, floorY + .02, c.z); g.add(sand);
+
+    // Things on the seabed, scattered over a disc (sqrt keeps the density even out to the rim).
+    const disc = (n, rMin, rMax) => Array.from({ length: n }, () => {
+      const a = rnd() * 6.28, r = rMin + (rMax - rMin) * Math.sqrt(rnd());
+      return { pos: V3(c.x + Math.cos(a) * r, floorY, c.z + Math.sin(a) * r), yaw: rnd() * 6.28, scale: .7 + rnd() * .6 };
+    });
+    g.add(PH.modelInstances('coral-set', disc(16, 1, R), { height: 1.6 }));
+    g.add(PH.modelInstances('coral-a', disc(26, 0, R), { height: 1.1 }));
+    g.add(PH.modelInstances('anemone', disc(14, 0, R), { height: .8 }));
+    g.add(PH.modelInstances('seaweed', disc(30, 0, R * 1.3), { height: 2.2 }));
+    g.add(PH.modelInstances('rocks', disc(9, 2, R * 1.4), { height: 1.2 }));
+    g.add(PH.modelInstances('starfish', disc(12, 0, R), { length: .6 }));
+
+    // Swimmers circle the reef; each keeps its own radius, height, speed and bob phase.
+    const swimmers = [];
+    const school = (name, n, length, radius, height, speed, tint) => {
+      for (let i = 0; i < n; i++) {
+        const f = PH.modelClone(name, { length }, tint);
+        f.userData = { r: radius * (.75 + rnd() * .5), a: rnd() * 6.28, y: floorY + height + (rnd() - .5) * 1.2, s: speed * (.8 + rnd() * .4), bob: rnd() * 6.28 };
+        g.add(f); swimmers.push(f);
+      }
+    };
+    school('clownfish', 9, .45, 3, 1.3, .38);
+    school('butterflyfish', 9, .5, 4.5, 1.9, -.32);
+    school('bluetang', 12, .55, 6, 2.6, .26);
+    school('parrotfish', 6, .85, 8, 3.2, -.18);
+    school('turtle', 1, 2.4, 7, 3.8, .09, '#7d9a5c');
+    school('turtle-b', 1, 2.1, 10, 2.8, -.07);
+    school('shark', 2, 2.4, 13, 4.6, .14, '#8d9aa2'); // small reef sharks patrolling the edge
+
+    // Light shafts from the surface, and bubbles drifting up.
+    const rayMat = new THREE.MeshBasicMaterial({ color: '#d8fff6', transparent: true, opacity: .07, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+    for (let i = 0; i < 7; i++) {
+      const h = -floorY + 1, ray = new THREE.Mesh(new THREE.CylinderGeometry(.35 + rnd() * .4, 1.6 + rnd() * 1.2, h, 10, 1, true), rayMat);
+      ray.position.set(c.x + (rnd() - .5) * R * 1.4, floorY + h / 2, c.z + (rnd() - .5) * R * 1.4);
+      ray.rotation.set((rnd() - .5) * .25, 0, (rnd() - .5) * .25); g.add(ray);
+    }
+    const nb = 90, bp = new Float32Array(nb * 3);
+    for (let i = 0; i < nb; i++) bp.set([c.x + (rnd() - .5) * R * 2, floorY + rnd() * -floorY, c.z + (rnd() - .5) * R * 2], i * 3);
+    const bubbleGeo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(bp, 3));
+    g.add(new THREE.Points(bubbleGeo, new THREE.PointsMaterial({ size: .12, map: ctx.glow, color: '#e8fffb', transparent: true, opacity: .7, depthWrite: false })));
+
+    g.userData.tick = (t, dt, night, reduce) => {
+      if (reduce) return;
+      for (const f of swimmers) {
+        const u = f.userData; u.a += u.s / Math.max(1, u.r * .25) * dt;
+        f.position.set(c.x + Math.cos(u.a) * u.r, u.y + Math.sin(t * 1.4 + u.bob) * .2, c.z + Math.sin(u.a) * u.r);
+        f.rotation.y = -u.a + (u.s > 0 ? 0 : Math.PI); // local +z (the head) points along the circle
+        f.rotation.z = Math.sin(t * 6 + u.bob) * .05; // a little wiggle
+      }
+      for (let i = 0; i < nb; i++) { let y = bp[i * 3 + 1] + dt * (.4 + (i % 5) * .08); if (y > -.6) y = floorY + .2; bp[i * 3 + 1] = y; }
+      bubbleGeo.attributes.position.needsUpdate = true;
+    };
+    return g;
+  });
+
   PH.waveY = waveY;
   PH.loadGLB = loadGLB;
   PH.lambert = lambert;

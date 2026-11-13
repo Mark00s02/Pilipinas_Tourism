@@ -9,6 +9,7 @@ PH.register({
       { kind: 'karst', area: [11.05, 119.28, 11.23, 119.42], count: 70, height: 160, radius: 330 },
       { kind: 'lagoon', at: [11.150, 119.322], radius: 380, depth: 4 },
       { kind: 'reefShelf', depth: 3, width: 150 },
+      { kind: 'basin', at: [11.115, 119.315], radius: 1600, depth: 60 }, // dive site for the reef section
     ],
   },
   palette: { water: ['#0f4a52', '#0a2230'] },
@@ -17,6 +18,7 @@ PH.register({
     { kind: 'bangka', at: [11.140, 119.330], spreadM: 400, count: 3 },
     { kind: 'palms', area: [11.15, 119.37, 11.21, 119.42], count: 70, maxM: 20 },
     { kind: 'cityLights', area: [11.17, 119.38, 11.20, 119.40], count: 300, maxM: 30 },
+    { kind: 'reef', at: [11.115, 119.315], depthM: 60, radius: 9 },
   ],
   hero: {
     eyebrow: 'Chapter 00 — El Nido, Palawan', title: 'Limestone towers in a glass-green sea.',
@@ -55,7 +57,7 @@ PH.register({
       plates: [
         { src: 'coral.webp', alt: 'Branching coral under clear turquoise water', w: 1600, h: 1067, caption: 'Coral gardens, Bacuit Bay' },
       ],
-      cam: { pos: [11.115, 119.305, 90], look: [11.14, 119.315, 0] },
+      cam: { pos: [11.1092, 119.3102, -16], look: [11.1158, 119.3158, -52] }, // underwater: negative altitude
     },
     {
       id: 'sunset', nav: 'Sunset', navAlt: 'Corong-Corong', indexLabel: 'The sunset',

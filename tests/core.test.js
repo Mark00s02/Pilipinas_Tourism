@@ -75,6 +75,15 @@ test('touch-ups: terraces mark land cells in their area with 2', () => {
   applyTouchups(g, [{ kind: 'terraces', area: AREA, step: 5 }]);
   for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) assert.equal(g.mark[y * 20 + x], x < 10 ? 2 : 0);
 });
+test('touch-ups: basin deepens sea into a smooth bowl and never touches land', () => {
+  const g = halfGrid();
+  applyTouchups(g, [{ kind: 'basin', at: [0.009, 0.0142], radius: 400, depth: 60 }]); // centre on the sea half, 4 cells across
+  const centre = g.data[10 * 20 + 15], edge = g.data[10 * 20 + 19], halfway = g.data[10 * 20 + 17];
+  assert.equal(centre, -60);
+  assert.ok(halfway < -20 && halfway > -60, `halfway ${halfway}`);
+  assert.equal(edge, -20);
+  for (let y = 0; y < 20; y++) for (let x = 0; x < 10; x++) assert.equal(g.data[y * 20 + x], 10);
+});
 test('touch-ups: karst and lagoon behave, same seed is deterministic', () => {
   const tus = [{ kind: 'karst', area: AREA, count: 10, height: 50, radius: 150 }, { kind: 'lagoon', at: [0.009, 0.004], radius: 250, depth: 4 }];
   const a = applyTouchups(halfGrid(), tus, 7), b = applyTouchups(halfGrid(), tus, 7);

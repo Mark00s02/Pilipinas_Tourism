@@ -9,6 +9,7 @@
   const COARSE = matchMedia('(pointer: coarse)').matches;
   const WORLD = 380; // world units across a destination's box
   const C = h => new THREE.Color(h);
+  const UW_FOG = new THREE.Color('#0d5560'), UW_LIGHT = new THREE.Color('#8fe0dc');
 
   function hash(x, z) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); }
 
@@ -82,6 +83,16 @@
       W.waterMat.color.lerpColors(P.water[0], P.water[1], night);
       W.stars.material.opacity = night * .9;
       W.sky.position.copy(camera.position); W.stars.position.copy(camera.position);
+      // Below the surface: blue-green haze closes in, the sky goes away and the light turns aquamarine.
+      const uw = smooth(.1, -1.1, camera.position.y);
+      if (uw > 0) {
+        W.scene.fog.color.lerp(UW_FOG, uw);
+        W.hemi.color.lerp(UW_LIGHT, uw);
+        W.sunLight.intensity *= 1 - uw * .45;
+      }
+      W.scene.fog.near = lerp(70, 1, uw); W.scene.fog.far = lerp(560, 42, uw);
+      W.sky.visible = W.stars.visible = uw < .5;
+      W.scene.background = uw >= .5 ? W.scene.fog.color : null;
       if (!REDUCE) W.waterU.uTime.value = t;
       for (const fn of W.ticks) fn(t, dt, night, REDUCE);
 
@@ -222,7 +233,7 @@
     // Water with GPU waves (flat shading derives normals from the displaced surface)
     const waterU = { uTime: { value: 0 } };
     const waterGeo = new THREE.PlaneGeometry(900, 900, 160, 160); waterGeo.rotateX(-Math.PI / 2);
-    const waterMat = new THREE.MeshPhongMaterial({ color: PAL.water[0].clone(), specular: 0xffc590, shininess: 70, flatShading: true, transparent: true, opacity: T.waterOpacity ?? .86 });
+    const waterMat = new THREE.MeshPhongMaterial({ color: PAL.water[0].clone(), specular: 0xffc590, shininess: 70, flatShading: true, transparent: true, opacity: T.waterOpacity ?? .86, side: THREE.DoubleSide }); // seen from below on dives
     waterMat.onBeforeCompile = sh => {
       sh.uniforms.uTime = waterU.uTime;
       sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -255,7 +266,7 @@
     const cams = [desc.hero.cam, ...desc.sections.map(s => s.cam), desc.finale.cam];
     // Keep every camera clear of the ground: real terrain is easy to misjudge from coordinates alone.
     const clear = v => { const g = geoToGrid(grid, ...[(.5 - v.z / WORLD) * (N - S) + S, (v.x / WORLD + .5) * (E - Wb) + Wb]); v.y = Math.max(v.y, worldY(heightM(g.gx, g.gy)) + 2.5); return v; };
-    const keys = cams.map(c => [clear(geo(...c.pos)), geo(...c.look)]);
+    const keys = cams.map(c => [c.pos[2] < 0 ? geo(...c.pos) : clear(geo(...c.pos)), geo(...c.look)]); // negative altitude = a deliberate dive
     const followKey = desc.sections.findIndex(s => s.follow === 'eagle');
     const K = keys.length;
     return {

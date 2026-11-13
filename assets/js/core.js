@@ -106,6 +106,16 @@
         if (d <= r - 1) data[y * w + x] = Math.min(data[y * w + x], -t.depth); // outer 1-cell ring stays as the rim
       }
     },
+    // A deeper bowl in the seabed (a dive site): flat bottom out to 40 % of the radius, then a smooth cosine rim.
+    basin(grid, t) {
+      const { w, h, data, cellM } = grid, c = geoToGrid(grid, t.at[0], t.at[1]), r = t.radius / cellM;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const k = y * w + x, q = Math.hypot(x - c.gx, y - c.gy) / r;
+        if (q >= 1 || data[k] > 0) continue;
+        const f = q < .4 ? 1 : (1 + Math.cos(Math.PI * (q - .4) / .6)) / 2;
+        data[k] = Math.min(data[k], -t.depth * f);
+      }
+    },
     terraces(grid, t) {
       const b = areaCells(grid, t.area), { w, data } = grid;
       grid.mark = grid.mark || new Uint8Array(data.length);
